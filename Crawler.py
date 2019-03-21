@@ -1,6 +1,9 @@
+from database.models import *
+
+
 class Crawler:
 
   def __init__(self):
-      print('Crawl of Duty!!')
+      print(DataType(code="PDF").code)
 
 Crawler()
