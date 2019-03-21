@@ -8,7 +8,7 @@ from enum import Enum
 rp = urllib.robotparser.RobotFileParser()
 URL = 'http://e-uprava.gov.si'
 URL2 = 'http://e-uprava.gov.si/e-uprava/oglasnadeska.html'
-URL3 = 'http://podatki.gov.si'
+URL3 = 'http://lib1.org/_ads/79930DFA74DA9E76CECB94ACDE7794CC'
 
 def __init__(self, URL):
     self.URL = URL
@@ -36,11 +36,26 @@ async def getSiteContent(url, contentType = ContentType.HTML):
 
     if contentType == ContentType.HTML:
         # print(BeautifulSoup(text.decode('utf-8'), 'html5lib'))
-        return BeautifulSoup(text.decode('utf-8'), 'html5lib')
+        htmlContent = BeautifulSoup(text.decode('utf-8'), 'html5lib')
+        documents = []
+        for link in htmlContent.find_all('a'):
+            current_link = link.get('href')
+            if current_link :
+                if current_link.endswith('pdf') \
+                            or current_link.endswith('doc') \
+                            or current_link.endswith('docx') \
+                            or current_link.endswith('doc') \
+                            or current_link.endswith('ppt') \
+                            or current_link.endswith('pptx'):
+                    documents.append(current_link)
+            return htmlContent, documents
     elif contentType == ContentType.HEAD:
         # print(text.decode('utf-8'))
         return text
 
 # asyncio.run(getSiteContent(URL, ContentType.HTML))
 asyncio.run(getSiteContent(URL, ContentType.HEAD))
-asyncio.run(getSiteContent(URL3, ContentType.HEAD))
+
+htmlContent, documents = asyncio.run(getSiteContent(URL3, ContentType.HTML))
+print(htmlContent)
+print(documents)
