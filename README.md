@@ -1,8 +1,18 @@
 # Crawl of Duty
 The goal of this programming assignment is to build a standalone crawler that will crawl only .gov.si web sites.
 
+## Installation instructions
 
-## How to setup the database with Docker?
+Before running the project you will have to install the following dependencies.
+
+```
+pip install beautifulsoup4
+pip install aiohttp
+pip install SQLAlchemy
+pip install psycopg2 
+```
+
+## How to setup the database with Docker
 
 ```
 $ docker pull zanozbot/crawl-of-duty-postgres
