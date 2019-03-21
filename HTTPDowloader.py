@@ -3,30 +3,44 @@ import aiohttp
 import asyncio
 from urllib.parse import urlparse
 import urllib.robotparser
+from enum import Enum
 
 rp = urllib.robotparser.RobotFileParser()
 URL = 'http://e-uprava.gov.si'
 URL2 = 'http://e-uprava.gov.si/e-uprava/oglasnadeska.html'
-
+URL3 = 'http://podatki.gov.si'
 
 def __init__(self, URL):
     self.URL = URL
 
 
-async def getSiteContent(url):
+class ContentType(Enum):
+    HTML = 0,
+    HEAD = 1
+
+
+async def getSiteContent(url, contentType = ContentType.HTML):
     async with aiohttp.ClientSession() as session:
         parsedUrl = urlparse(url)
         rp.set_url(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt")
         rp.read()
         if rp.can_fetch("*", url):
-            async with session.get(url) as resp:
-                text = await resp.read()
+            if contentType == ContentType.HTML:
+                async with session.get(url) as resp:
+                    text = await resp.read()
+            elif contentType == ContentType.HEAD:
+                async with session.get(url) as resp:
+                    text = resp.headers
         else:
             return ""
 
-    # print(BeautifulSoup(text.decode('utf-8'), 'html5lib'))
-    return BeautifulSoup(text.decode('utf-8'), 'html5lib')
+    if contentType == ContentType.HTML:
+        # print(BeautifulSoup(text.decode('utf-8'), 'html5lib'))
+        return BeautifulSoup(text.decode('utf-8'), 'html5lib')
+    elif contentType == ContentType.HEAD:
+        # print(text.decode('utf-8'))
+        return text
 
-
-asyncio.run(getSiteContent(URL))
-asyncio.run(getSiteContent(URL2))
+# asyncio.run(getSiteContent(URL, ContentType.HTML))
+asyncio.run(getSiteContent(URL, ContentType.HEAD))
+asyncio.run(getSiteContent(URL3, ContentType.HEAD))
