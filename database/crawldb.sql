@@ -1,5 +1,10 @@
 CREATE SCHEMA IF NOT EXISTS crawldb;
 
+CREATE TABLE crawldb.frontier (
+	url                 varchar(3000)  NOT NULL,
+	CONSTRAINT pk_frontier_url PRIMARY KEY ( url )
+ );
+
 CREATE TABLE crawldb.data_type ( 
 	code                 varchar(20)  NOT NULL,
 	CONSTRAINT pk_data_type_code PRIMARY KEY ( code )

@@ -30,5 +30,8 @@ class PageData(Base):
 class Image(Base):
     __table__ = Table('image', metadata, autoload=True, schema='crawldb')
 
+class Frontier(Base):
+    __table__ = Table('frontier', metadata, autoload=True, schema='crawldb')
+
 # Create a session to use the tables
 session = create_session(bind=engine)

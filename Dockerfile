@@ -1,5 +1,5 @@
 FROM postgres
-COPY crawldb.sql /docker-entrypoint-initdb.d/
+COPY database/crawldb.sql /docker-entrypoint-initdb.d/
 ENV POSTGRES_USER docker
 ENV POSTGRES_PASSWORD docker
 ENV POSTGRES_DB postgres
