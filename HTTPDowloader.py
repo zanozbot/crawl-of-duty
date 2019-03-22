@@ -5,6 +5,12 @@ from urllib.parse import urlparse
 import urllib.robotparser
 from enum import Enum
 
+from selenium import webdriver
+import pandas as pd
+
+driver = webdriver.Chrome('C:/Users/Uporabnik/Documents/Git/crawl-of-duty/chromedriver.exe')
+
+
 rp = urllib.robotparser.RobotFileParser()
 URL = 'http://e-uprava.gov.si'
 URL2 = 'http://e-uprava.gov.si/e-uprava/oglasnadeska.html'
@@ -48,14 +54,40 @@ async def getSiteContent(url, contentType = ContentType.HTML):
                             or current_link.endswith('ppt') \
                             or current_link.endswith('pptx'):
                     documents.append(current_link)
-            return htmlContent, documents
+        return htmlContent, documents
     elif contentType == ContentType.HEAD:
         # print(text.decode('utf-8'))
         return text
+
+
+def seleniumGetContents(url):
+    driver.get(url)
+    htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
+    # print(htmlContent)
+    documents = []
+    for link in htmlContent.find_all('a'):
+        print(link)
+        current_link = link.get('href')
+        if current_link:
+            if current_link.endswith('pdf') \
+                    or current_link.endswith('doc') \
+                    or current_link.endswith('docx') \
+                    or current_link.endswith('doc') \
+                    or current_link.endswith('ppt') \
+                    or current_link.endswith('pptx'):
+                documents.append(current_link)
+    driver.close()
+    return htmlContent, documents
+
 
 # asyncio.run(getSiteContent(URL, ContentType.HTML))
 asyncio.run(getSiteContent(URL, ContentType.HEAD))
 
 htmlContent, documents = asyncio.run(getSiteContent(URL3, ContentType.HTML))
-print(htmlContent)
-print(documents)
+# print(htmlContent)
+# print(documents)
+
+html, doc = seleniumGetContents('https://angular.io')
+
+print(html)
+print(doc)
