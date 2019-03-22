@@ -1,13 +1,10 @@
 from bs4 import BeautifulSoup
 import aiohttp
-import asyncio
 from urllib.parse import urlparse
 import urllib.robotparser
 from enum import Enum
 from selenium.webdriver.chrome.options import Options
-
 from selenium import webdriver
-import pandas as pd
 
 rp = urllib.robotparser.RobotFileParser()
 URL = 'http://e-uprava.gov.si'

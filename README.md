@@ -6,6 +6,7 @@ The goal of this programming assignment is to build a standalone crawler that wi
 Before running the project you will have to install the following dependencies.
 
 ```
+pip install selenium
 pip install beautifulsoup4
 pip install aiohttp
 pip install SQLAlchemy
