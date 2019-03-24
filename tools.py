@@ -3,6 +3,7 @@ import url, re
 from urllib.parse import urlparse
 from urllib.request import urlopen
 import urllib.robotparser
+from enum import Enum
 
 rp = urllib.robotparser.RobotFileParser()
 
@@ -18,7 +19,9 @@ def robotsparse(url):
         sm = str(urlopen(sitemap).read())
         locs = re.findall("<loc>([^<>]+)</loc>", sm)
         locations.append(locs)
-    return rp, locations
+    
+    sitemap = sitemaps[0] if len(sitemaps) > 0 else None
+    return rp, locations, sitemap
 
 # Url canonization
 def canonize_url(url_string):

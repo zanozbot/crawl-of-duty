@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 import aiohttp
-from enum import Enum
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 import sys, re
@@ -37,7 +36,7 @@ def processSiteUrl(url):
 
 async def getSiteContent(url, contentType = ContentType.HTML):
     async with aiohttp.ClientSession() as session:
-        rp, locations = robotsparse(url)
+        rp, locations, sitemap = robotsparse(url)
         if rp.can_fetch("*", url):
             if contentType == ContentType.HTML:
                 async with session.get(url) as resp:
@@ -75,12 +74,11 @@ async def getSiteContent(url, contentType = ContentType.HTML):
 
 def seleniumGetContents(url):
     driver.get(url)
-    robotsparse(url)
     htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
     # print(htmlContent)
     documents = []
     images = []
-    rp, locations = robotsparse(url)
+    rp, locations, sitemap = robotsparse(url)
     if rp.can_fetch("*", url):
         for link in htmlContent.find_all('img'):
             current_link = link.get('src')
@@ -101,7 +99,7 @@ def seleniumGetContents(url):
 
 async def getBinaryFile(url):
     async with aiohttp.ClientSession() as session:
-        rp, locations = robotsparse(url)
+        rp, locations, sitemap = robotsparse(url)
         if rp.can_fetch("*", url):
             async with session.get(url) as resp:
                 text = await resp.read()

@@ -2,27 +2,39 @@ from database.models import *
 from urllib.parse import urlparse
 from processing import WrappedPool, create_pool_object
 import re
-from tools import canonize_url
+from tools import *
 
 # List of seed urls
 seed_list = [
     # Compulsory
-    "evem.gov.si",
-    "e-uprava.gov.si",
-    "podatki.gov.si",
-    "e-prostor.gov.si",
+    "http://evem.gov.si",
+    "http://e-uprava.gov.si",
+    "http://podatki.gov.si",
+    "http://e-prostor.gov.si",
     # Selected
-    "arso.gov.si",
-    "gu.gov.si",
-    "mop.gov.si",
-    "mju.gov.si",
-    "ess.gov.si"
+    "http://arso.gov.si",
+    "http://gu.gov.si",
+    "http://mop.gov.si",
+    "http://mju.gov.si",
+    "http://ess.gov.si"
 ]
 
 class Crawler:
     def __init__(self):
         # Create session from Session object
         self.session = Session()
+
+        seedObjs = []
+        for seed in seed_list:
+            rp, locations, sitemap = robotsparse(seed)
+            s = Site(domain=seed, robots_content=str(rp), sitemap_content=sitemap)
+            if self.session.query(Frontier).filter(Frontier.domain == seed).count() <= 0:
+                self.session.add(s)
+                self.session.commit()
+
+        print(self.session.query(Frontier))
+
+        exit(1)
 
         # Create process pool
         pool = create_pool_object(lambda x: {"add_to_frontier" : []}, session=self.session)
