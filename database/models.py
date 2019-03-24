@@ -1,5 +1,5 @@
 from sqlalchemy import Table
-from sqlalchemy.orm import create_session
+from sqlalchemy.orm import sessionmaker
 
 from database.DatabaseManager import DatabaseManager
 
@@ -34,4 +34,4 @@ class Frontier(Base):
     __table__ = Table('frontier', metadata, autoload=True, schema='crawldb')
 
 # Create a session to use the tables
-session = create_session(bind=engine)
+Session = sessionmaker(bind=engine)

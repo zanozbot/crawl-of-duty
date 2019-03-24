@@ -13,6 +13,22 @@ URL3 = 'https://angular.io'
 URL4 = 'https://reddit.com'
 pdfURL = 'https://arxiv.org/pdf/1808.07042.pdf'
 
+
+# Drivers linux/windows/osx
+platform_driver = ''
+if sys.platform.startswith('linux'):
+    platform_driver = './platform_dependent/linux_chromedriver'
+elif sys.platform.startswith('win') or sys.platform.startswith('cygwin'):
+    platform_driver = './platform_dependent/win_chromedriver.exe'
+elif sys.platform.startswith('darwin'):
+    platform_driver = './platform_dependent/osx_chromedriver'
+
+# Instantiate headless chrome
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+driver = webdriver.Chrome(executable_path='./chromedriver', options=chrome_options)
+
+
 class ContentType(Enum):
     HTML = 0,
     HEAD = 1
@@ -61,9 +77,6 @@ async def getSiteContent(url, contentType = ContentType.HTML):
 
 
 def seleniumGetContents(url):
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    driver = webdriver.Chrome(executable_path='C:/Users/Uporabnik/Documents/Git/crawl-of-duty/chromedriver.exe', options=chrome_options)
     driver.get(url)
     htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
     # print(htmlContent)
@@ -114,7 +127,10 @@ async def getBinaryFile(url):
 # print(doc)
 # print (images)
 
-html, doc, images = seleniumGetContents(URL4)
+html, doc, images = seleniumGetContents(URL3)
+print(html)
+print(doc)
+print(images)
 
 # html, doc, images = asyncio.run(getSiteContent(pdfURL, ContentType.HTML))
 

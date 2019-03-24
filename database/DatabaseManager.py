@@ -5,7 +5,7 @@ class DatabaseManager:
     def __init__(self):
         # Create and engine and get the metadata
         self.Base = declarative_base()
-        self.engine = create_engine("postgresql://docker:docker@192.168.99.100:5432/postgres")
+        self.engine = create_engine("postgresql://docker:docker@localhost:5432/postgres")
         self.metadata = MetaData(bind=self.engine)
 
     def get_base(self):

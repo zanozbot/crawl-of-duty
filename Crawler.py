@@ -1,12 +1,38 @@
 from database.models import *
 from urllib.parse import urlparse
+from processing import WrappedPool, create_pool_object
 import re
 
-class Crawler:
+# List of seed urls
+seed_list = [""]
 
+class Crawler:
     def __init__(self):
-        print(DataType(code="PDF").code)
-        print(self.normalize_url('https://www.cwi.nl:80/%7Eguido/Python/1239/index.html?id=213'))
+        # Create session from Session object
+        session = Session()
+
+        # Create process pool
+        pool = create_pool_object(lambda x: {"add_to_frontier" : []}, session=session)
+        
+        # Register callbacks
+        pool.register_callback("processed", lambda x: print(x))
+        pool.register_callback("add_to_frontier", lambda x: print(x))
+
+        # DELETE
+        session.add_all([Frontier(url="asdasdasd"),Frontier(url="ae")])
+        session.commit()
+
+        # Get the number of urls in frontier
+        rows = session.query(Frontier).count()
+
+        # Load from database or start with seed lsit
+        if rows > 0:
+            pool.start_with_frontier()
+        else:
+            pool.start_with_parameters_list(seed_list)
+
+        
+        #print(DataType(code="PDF").code)
 
     def normalize_url(self, url):
         parsed_url = urlparse(url)
