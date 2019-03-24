@@ -5,8 +5,8 @@ import concurrent.futures
 from multiprocessing import Queue
 # Import all ORM models
 from database.models import *
-import sys, time, atexit, url
-
+import sys, time, atexit
+from tools import *
 
 # Pool wrapper
 class WrappedPool:
@@ -34,12 +34,6 @@ class WrappedPool:
 
         # Register frontier save function at program exit
         atexit.register(self.save_frontier)
-    
-    # Url canonization
-    def canonize_url(self, url_string):
-        url_parsed = url.URL.parse(url_string)
-        url_cleaned = url_parsed.strip().defrag().deparam(['utm_source']).abspath().escape().canonical().utf8
-        return url_cleaned
 
     # Load frontier
     def load_frontier(self):
@@ -76,6 +70,7 @@ class WrappedPool:
         self.load_frontier()
         #self.exec()
 
+    # Execute pool process
     def exec(self):
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.max_workers) as executor:            
             try:
@@ -84,16 +79,20 @@ class WrappedPool:
                     fin,nfin = concurrent.futures.wait(futures, timeout=0.1, return_when=concurrent.futures.FIRST_COMPLETED)
                     if len(fin) > 0:
                         for f in list(fin):
-                            futures.pop(f,None)
+                            pop_url = futures.pop(f,None)
+                            if pop_url is not None:
+                                self.processed.put(pop_url)
                             res = f.result()
                             if ("add_to_frontier" in res):
                                 for prm in res["add_to_frontier"]:
                                     cprm = canonize_url(prm)
-                                    if cprm not in self.processed:
+                                    cprm_not_in_db = self.session.query(Page).filter(Page.url == cprm).count() <= 0
+                                    if cprm_not_in_db and cprm not in self.processed:
                                         self.frontier.put(cprm)
+                                res["add_to_frontier"] = [self.canonize_url(pr) for pr in res["add_to_frontier"]]
                             for k in res:
                                 if (k in self.callback):
-                                    self.callback[k](res[k])
+                                    self.callback[k](pop_url, res[k])
                             
                     
                     print("\033[K",end='\r')
@@ -111,4 +110,3 @@ class WrappedPool:
 # Pool creation function
 def create_pool_object(func, max_workers=4, max_size=20, session=None):
     return WrappedPool(func, max_workers, max_size, session=(Session() if session is None else session) )
-

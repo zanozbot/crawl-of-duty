@@ -1,21 +1,11 @@
 from bs4 import BeautifulSoup
 import aiohttp
-from urllib.parse import urlparse
-from urllib.request import urlopen
-import urllib.robotparser
 from enum import Enum
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 import sys, re
 import xml.etree.ElementTree as ET
-
-rp = urllib.robotparser.RobotFileParser()
-URL = 'http://e-uprava.gov.si'
-URL2 = 'http://e-uprava.gov.si/e-uprava/oglasnadeska.html'
-URL3 = 'https://angular.io'
-URL4 = 'https://reddit.com'
-URL5 = 'http://www.e-prostor.gov.si'
-pdfURL = 'https://arxiv.org/pdf/1808.07042.pdf'
+from tools import *
 
 
 # Drivers linux/windows/osx
@@ -33,17 +23,21 @@ chrome_options.add_argument("--headless")
 driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
 
 
-class ContentType(Enum):
-    HTML = 0,
-    HEAD = 1
+def processSiteUrl(url):
+    # Call appropriate code
+
+
+    # return a dictionary with appropriate values
+    # "add_to_frontier" should be an array of urls found on the website.
+    # They do not need to be canonized, that is taken care of in processing.py
+    # other keys are optional. For each key a callback can be specified that
+    # gets called when returned. An example of that is in Crawler.py
+    return {"add_to_frontier" : [], "website" : dict(), "documents" : [], "images" : []}
 
 
 async def getSiteContent(url, contentType = ContentType.HTML):
     async with aiohttp.ClientSession() as session:
-        parsedUrl = urlparse(url)
-        print(parsedUrl)
-        rp.set_url(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt")
-        rp.read()
+        rp, locations = robotsparse(url)
         if rp.can_fetch("*", url):
             if contentType == ContentType.HTML:
                 async with session.get(url) as resp:
@@ -79,21 +73,6 @@ async def getSiteContent(url, contentType = ContentType.HTML):
         # print(text.decode('utf-8'))
         return text, [], []
 
-
-# urllib implementation does only basic functionality
-# It does not provide sitemap parsing
-def robotsparse(url):
-    parsedUrl = urlparse(url)
-    uo = str(urlopen(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt").read())
-    rp.parse(uo)
-    sitemaps = re.findall("Sitemap:\s+([A-Za-z0-9\-\.\_\~\:\/\?\#\[\]\@\!\$\&\(\)\*\+\,\;\=\%]+)", uo)
-    locations = []
-    for sitemap in sitemaps:
-        sm = str(urlopen(sitemap).read())
-        locs = re.findall("<loc>([^<>]+)</loc>", sm)
-        locations.append(locs)
-    return rp, locations
-
 def seleniumGetContents(url):
     driver.get(url)
     robotsparse(url)
@@ -101,11 +80,7 @@ def seleniumGetContents(url):
     # print(htmlContent)
     documents = []
     images = []
-    parsedUrl = urlparse(url)
-    rp.set_url(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt")
-    rp.read()
-    print(rp)
-    return
+    rp, locations = robotsparse(url)
     if rp.can_fetch("*", url):
         for link in htmlContent.find_all('img'):
             current_link = link.get('src')
@@ -126,14 +101,11 @@ def seleniumGetContents(url):
 
 async def getBinaryFile(url):
     async with aiohttp.ClientSession() as session:
-        parsedUrl = urlparse(url)
-        print(parsedUrl)
-        rp.set_url(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt")
-        rp.read()
+        rp, locations = robotsparse(url)
         if rp.can_fetch("*", url):
             async with session.get(url) as resp:
                 text = await resp.read()
-                return text
+                return text 
 
 # asyncio.run(getSiteContent(URL, ContentType.HTML))
 # asyncio.run(getSiteContent(URL, ContentType.HEAD))
@@ -148,10 +120,10 @@ async def getBinaryFile(url):
 # print(doc)
 # print (images)
 
-html, doc, images = seleniumGetContents(URL5)
-print(html)
-print(doc)
-print(images)
+#html, doc, images = seleniumGetContents(URL5)
+#print(html)
+#print(doc)
+#print(images)
 
 # html, doc, images = asyncio.run(getSiteContent(pdfURL, ContentType.HTML))
 
