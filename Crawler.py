@@ -66,7 +66,7 @@ class Crawler:
         self.session.commit()
 
     def process_website(self, url, website):
-
+        # self.session.query(Page).filter(Page.html_content == website).count() <= 0
         print(website)
 
     def process_documents(self, url, documents):

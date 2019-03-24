@@ -37,6 +37,8 @@ CREATE TABLE crawldb.page (
 
 CREATE INDEX "idx_page_site_id" ON crawldb.page ( site_id );
 
+CREATE INDEX "idx_page_html_content" ON crawldb.page ( html_content );
+
 CREATE INDEX "idx_page_page_type_code" ON crawldb.page ( page_type_code );
 
 CREATE TABLE crawldb.page_data ( 
