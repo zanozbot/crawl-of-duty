@@ -11,6 +11,7 @@ pip install beautifulsoup4
 pip install aiohttp
 pip install SQLAlchemy
 pip install psycopg2 
+pip install git+https://github.com/seomoz/url-py
 ```
 
 ## How to setup the database with Docker
