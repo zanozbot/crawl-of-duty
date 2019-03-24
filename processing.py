@@ -63,12 +63,12 @@ class WrappedPool:
     def start_with_parameters_list(self, params):
         for param in params:
             self.params_list.append(param)
-        #self.exec()
+        self.exec()
 
     # Start pool with frontier
     def start_with_frontier(self):
         self.load_frontier()
-        #self.exec()
+        self.exec()
 
     # Execute pool process
     def exec(self):
