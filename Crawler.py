@@ -7,16 +7,16 @@ from tools import *
 # List of seed urls
 seed_list = [
     # Compulsory
-    "http://evem.gov.si",
-    "http://e-uprava.gov.si",
-    "http://podatki.gov.si",
-    "http://e-prostor.gov.si",
+    "evem.gov.si",
+    "e-uprava.gov.si",
+    "podatki.gov.si",
+    "e-prostor.gov.si",
     # Selected
-    "http://arso.gov.si",
-    "http://gu.gov.si",
-    "http://mop.gov.si",
-    "http://mju.gov.si",
-    "http://ess.gov.si"
+    "www.arso.gov.si",
+    "gu.gov.si",
+    "mop.gov.si",
+    "mju.gov.si",
+    "www.ess.gov.si"
 ]
 
 class Crawler:
@@ -26,15 +26,16 @@ class Crawler:
 
         seedObjs = []
         for seed in seed_list:
-            rp, locations, sitemap = robotsparse(seed)
-            s = Site(domain=seed, robots_content=str(rp), sitemap_content=sitemap)
-            if self.session.query(Frontier).filter(Frontier.domain == seed).count() <= 0:
+            seed = canonize_url(seed)
+            if self.session.query(Site).filter(Site.domain == seed).count() <= 0:
+                rp, locations, sitemap = robotsparse(seed)
+                s = Site(domain=seed, robots_content=str(rp), sitemap_content=sitemap)
                 self.session.add(s)
                 self.session.commit()
 
-        print(self.session.query(Frontier))
+        #print(self.session.query(Frontier))
 
-        exit(1)
+        #exit(1)
 
         # Create process pool
         pool = create_pool_object(lambda x: {"add_to_frontier" : []}, session=self.session)

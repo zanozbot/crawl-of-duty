@@ -1,28 +1,11 @@
 from bs4 import BeautifulSoup
 import aiohttp
-from selenium.webdriver.chrome.options import Options
-from selenium import webdriver
 import sys, re
 import xml.etree.ElementTree as ET
 from tools import *
 
 
-# Drivers linux/windows/osx
-platform_driver = ''
-if sys.platform.startswith('linux'):
-    platform_driver = './platform_dependent/linux_chromedriver'
-elif sys.platform.startswith('win') or sys.platform.startswith('cygwin'):
-    platform_driver = './platform_dependent/win_chromedriver.exe'
-elif sys.platform.startswith('darwin'):
-    platform_driver = './platform_dependent/osx_chromedriver'
-
-# Instantiate headless chrome
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
-
-
-def processSiteUrl(url):
+def processSiteUrl(url, driver, robotsparser):
     # Call appropriate code
 
 
@@ -34,10 +17,10 @@ def processSiteUrl(url):
     return {"add_to_frontier" : [], "website" : dict(), "documents" : [], "images" : []}
 
 
-async def getSiteContent(url, contentType = ContentType.HTML):
+async def getSiteContent(url, robotsparser, contentType = ContentType.HTML):
     async with aiohttp.ClientSession() as session:
         rp, locations, sitemap = robotsparse(url)
-        if rp.can_fetch("*", url):
+        if robotsparser.can_fetch("*", url):
             if contentType == ContentType.HTML:
                 async with session.get(url) as resp:
                     text = await resp.read()
@@ -72,14 +55,14 @@ async def getSiteContent(url, contentType = ContentType.HTML):
         # print(text.decode('utf-8'))
         return text, [], []
 
-def seleniumGetContents(url):
+def seleniumGetContents(url, robotsparser, driver):
     driver.get(url)
     htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
     # print(htmlContent)
     documents = []
     images = []
     rp, locations, sitemap = robotsparse(url)
-    if rp.can_fetch("*", url):
+    if robotsparser.can_fetch("*", url):
         for link in htmlContent.find_all('img'):
             current_link = link.get('src')
             if current_link:
@@ -97,10 +80,10 @@ def seleniumGetContents(url):
         driver.close()
     return htmlContent, documents, images
 
-async def getBinaryFile(url):
+async def getBinaryFile(url, robotsparser):
     async with aiohttp.ClientSession() as session:
         rp, locations, sitemap = robotsparse(url)
-        if rp.can_fetch("*", url):
+        if robotsparser.can_fetch("*", url):
             async with session.get(url) as resp:
                 text = await resp.read()
                 return text 

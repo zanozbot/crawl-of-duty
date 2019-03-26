@@ -7,10 +7,27 @@ from multiprocessing import Queue
 from database.models import *
 import sys, time, atexit
 from tools import *
+# Selenium
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
 
 # Pool wrapper
 class WrappedPool:
     def __init__(self, func, max_workers, max_size, session):
+        # Drivers linux/windows/osx
+        platform_driver = ''
+        if sys.platform.startswith('linux'):
+            platform_driver = './platform_dependent/linux_chromedriver'
+        elif sys.platform.startswith('win') or sys.platform.startswith('cygwin'):
+            platform_driver = './platform_dependent/win_chromedriver.exe'
+        elif sys.platform.startswith('darwin'):
+            platform_driver = './platform_dependent/osx_chromedriver'
+
+        # Instantiate headless chrome
+        chrome_options = Options()
+        #chrome_options.add_argument("--headless")
+        
+
         # Number of active workers
         self.max_workers = max_workers
 
@@ -31,6 +48,11 @@ class WrappedPool:
 
         # Callback dictionary
         self.callback = dict()
+
+        # For each worker initialize driver
+        self.drivers = []
+        for w in range(max_workers):
+            self.drivers.append(webdriver.Chrome(executable_path=platform_driver, options=chrome_options))
 
         # Register frontier save function at program exit
         atexit.register(self.save_frontier)
@@ -109,4 +131,4 @@ class WrappedPool:
 
 # Pool creation function
 def create_pool_object(func, max_workers=4, max_size=20, session=None):
-    return WrappedPool(func, max_workers, max_size, session=(Session() if session is None else session) )
+    return WrappedPool(func, max_workers, max_size, session)
