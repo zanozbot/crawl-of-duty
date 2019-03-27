@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from processing import WrappedPool, create_pool_object
 import re
 from tools import *
-from HTTPDownloader import *
+from HTTPDownloaderWrapper import *
 
 # List of seed urls
 seed_list = [
@@ -42,7 +42,7 @@ class Crawler:
 
 
         # Create process pool
-        pool = create_pool_object(processSiteUrl, session=self.session, max_size=4)
+        pool = create_pool_object(processSiteUrlWrapper, session=self.session, max_workers=4, max_size=16)
         
         # Register callbacks
         # "website" expects a list with appropriate data
