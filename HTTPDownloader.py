@@ -97,5 +97,3 @@ async def getBinaryFile(url, robotsparser):
             async with session.get(url) as resp:
                 text = await resp.read()
                 return text 
-
-print (seleniumGetContents())
