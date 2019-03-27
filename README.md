@@ -10,7 +10,7 @@ pip install selenium
 pip install beautifulsoup4
 pip install aiohttp
 pip install SQLAlchemy
-pip install psycopg2 
+pip install psycopg2
 pip install git+https://github.com/seomoz/url-py
 ```
 

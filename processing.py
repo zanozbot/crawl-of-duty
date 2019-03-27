@@ -7,29 +7,15 @@ from multiprocessing import Queue
 from database.models import *
 import sys, time, atexit
 from tools import *
-# Selenium
-from selenium.webdriver.chrome.options import Options
-from selenium import webdriver
 
 # Pool wrapper
 class WrappedPool:
     def __init__(self, func, max_workers, max_size, session):
-        # Drivers linux/windows/osx
-        platform_driver = ''
-        if sys.platform.startswith('linux'):
-            platform_driver = './platform_dependent/linux_chromedriver'
-        elif sys.platform.startswith('win') or sys.platform.startswith('cygwin'):
-            platform_driver = './platform_dependent/win_chromedriver.exe'
-        elif sys.platform.startswith('darwin'):
-            platform_driver = './platform_dependent/osx_chromedriver'
-
-        # Instantiate headless chrome
-        chrome_options = Options()
-        #chrome_options.add_argument("--headless")
-        
-
         # Number of active workers
         self.max_workers = max_workers
+
+        # Max number of urls in queue to be processed
+        self.max_size = max_size
 
         # Session object
         self.session = session
@@ -49,13 +35,16 @@ class WrappedPool:
         # Callback dictionary
         self.callback = dict()
 
-        # For each worker initialize driver
-        self.drivers = []
-        for w in range(max_workers):
-            self.drivers.append(webdriver.Chrome(executable_path=platform_driver, options=chrome_options))
-
         # Register frontier save function at program exit
         atexit.register(self.save_frontier)
+
+    # Bind a dictionary of robotparsers
+    def bind_robotparsers(self, rp_dict):
+        self.rp_dict = rp_dict
+
+    # Bind a session
+    def bind_session(self, sess):
+        self.session = sess
 
     # Load frontier
     def load_frontier(self):
@@ -94,16 +83,23 @@ class WrappedPool:
 
     # Execute pool process
     def exec(self):
-        with concurrent.futures.ProcessPoolExecutor(max_workers=self.max_workers) as executor:            
+        with concurrent.futures.ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+            # Make safe robotparser pass
+            safe_rp = get_robotparser('')
+            make_safe_rp = lambda rp_url: self.rp_dict[get_domain(rp_url)] if self.rp_dict is not None and get_domain(rp_url) in self.rp_dict else safe_rp
             try:
-                futures = {executor.submit(self.func, self.canonize_url(params) ): params for params in self.params_list}
+                if len(self.params_list) > self.max_size:
+                    for parm in self.params_list[self.max_size:]:
+                        self.frontier.put(parm)
+                    self.params_list = self.params_list[:self.max_size]
+                futures = {executor.submit(self.func, canonize_url(params), make_safe_rp(params) ): params for params in self.params_list}
                 while futures:
                     fin,nfin = concurrent.futures.wait(futures, timeout=0.1, return_when=concurrent.futures.FIRST_COMPLETED)
                     if len(fin) > 0:
                         for f in list(fin):
-                            pop_url = futures.pop(f,None)
-                            if pop_url is not None:
-                                self.processed.put(pop_url)
+                            popped = futures.pop(f,None)
+                            if popped is not None:
+                                self.processed.add(popped)
                             res = f.result()
                             if ("add_to_frontier" in res):
                                 for prm in res["add_to_frontier"]:
@@ -114,7 +110,7 @@ class WrappedPool:
                                 res["add_to_frontier"] = [self.canonize_url(pr) for pr in res["add_to_frontier"]]
                             for k in res:
                                 if (k in self.callback):
-                                    self.callback[k](pop_url, res[k])
+                                    self.callback[k](popped, res[k])
                             
                     
                     print("\033[K",end='\r')
@@ -122,13 +118,15 @@ class WrappedPool:
                     
                     while not self.frontier.empty() and len(futures) < self.max_size:
                         prms = self.frontier.get()
-                        futures[executor.submit(self.func, canonize_url(prms))] = prms
+                        futures[executor.submit(self.func, canonize_url(prms), make_safe_rp(prms))] = prms
 
-                        
+                for l in range(self.max_size):
+                    executor.submit(self.func, None, None)
+
             except concurrent.futures.process.BrokenProcessPool as ex:
                 print(ex)
                 
 
 # Pool creation function
-def create_pool_object(func, max_workers=4, max_size=20, session=None):
-    return WrappedPool(func, max_workers, max_size, session)
+def create_pool_object(func, max_workers=4, max_size=16, session=None):
+    return WrappedPool(func, max_workers, max(max_size, max_workers), session)

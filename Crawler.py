@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 from processing import WrappedPool, create_pool_object
 import re
 from tools import *
+from HTTPDownloader import *
 
 # List of seed urls
 seed_list = [
@@ -22,23 +23,26 @@ seed_list = [
 class Crawler:
     def __init__(self):
         # Create session from Session object
+        print("- INITIALIZING DATABASE CONNECTION -")
         self.session = Session()
 
+        # Get robots.txt and sitemap.xml data if available and not in db
         seedObjs = []
+        sites = []
         for seed in seed_list:
             seed = canonize_url(seed)
             if self.session.query(Site).filter(Site.domain == seed).count() <= 0:
-                rp, locations, sitemap = robotsparse(seed)
-                s = Site(domain=seed, robots_content=str(rp), sitemap_content=sitemap)
-                self.session.add(s)
-                self.session.commit()
+                rp, sitemap = robotsparse(seed)
+                s = Site(domain=seed, robots_content=rp, sitemap_content=sitemap)
+                sites.append(s)
 
-        #print(self.session.query(Frontier))
+        if len(sites) > 0:
+            self.session.add_all(sites)
+            self.session.commit()
 
-        #exit(1)
 
         # Create process pool
-        pool = create_pool_object(lambda x: {"add_to_frontier" : []}, session=self.session)
+        pool = create_pool_object(processSiteUrl, session=self.session, max_size=4)
         
         # Register callbacks
         # "website" expects a list with appropriate data
@@ -54,11 +58,29 @@ class Crawler:
         # Get the number of urls in frontier
         rows = self.session.query(Frontier).count()
 
+        # Get all sites and create robotparser dictionary
+        sites = self.session.query(Site).all()
+        rp_dict = dict()
+        for site in sites:
+            rp = get_robotparser(site.robots_content)
+            rp_dict[get_domain(site.domain)] = rp
+        
+        # Bind a dictionary of robotparsers
+        pool.bind_robotparsers(rp_dict)
+
         # Load from database or start with seed lsit
         if rows > 0:
             pool.start_with_frontier()
         else:
-            pool.start_with_parameters_list(seed_list)
+            # Get all site data
+            seeds = []
+            for site in sites:
+                seeds.append(site.domain)
+                if site.sitemap_content is not None and site.sitemap_content != '':
+                    nrmlzd = get_sitemap_locations(site.sitemap_content)
+                    for nrm in nrmlzd:
+                        seeds.append(nrm)
+            pool.start_with_parameters_list(seeds)
 
     def process_links(self, url, links):
         links = [canonize_url(link) for link in links]
@@ -67,13 +89,16 @@ class Crawler:
         self.session.commit()
 
     def process_website(self, url, website):
+        self = self
         # self.session.query(Page).filter(Page.html_content == website).count() <= 0
-        print(website)
+        #print("website:", website)
 
     def process_documents(self, url, documents):
-        print(documents)
+        self = self
+        #print("documents:",documents)
 
     def process_images(self, url, images):
-        print(images)
+        self = self
+        #print("images:",images)
 
 Crawler()

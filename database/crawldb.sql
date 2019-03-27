@@ -20,7 +20,8 @@ CREATE TABLE crawldb.site (
 	"domain"             varchar(500)  ,
 	robots_content       text  ,
 	sitemap_content      text  ,
-	CONSTRAINT pk_site_id PRIMARY KEY ( id )
+	CONSTRAINT pk_site_id PRIMARY KEY ( id ),
+	CONSTRAINT unq_domain_idx UNIQUE ( domain )
  );
 
 CREATE TABLE crawldb.page ( 

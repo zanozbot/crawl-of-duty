@@ -1,10 +1,32 @@
 # Useful functionalities
 import url, re
-from urllib.parse import urlparse
+import urllib.robotparser
+from urllib.parse import urlparse, unquote
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
-import urllib.robotparser
 from enum import Enum
+
+# Find locations in sitemap
+def get_sitemap_locations(sitemap):
+    locs = re.findall("<loc>([^<>]+)</loc>", sitemap)
+    locs = [canonize_url(loc) for loc in locs]
+    return locs
+
+# Get robotparser object
+def get_robotparser(robotsText):
+    rp = urllib.robotparser.RobotFileParser()
+    
+    # Parse according data
+    rp.parse(robotsText.splitlines())
+    
+    return rp
+
+def get_domain(url):
+    url = canonize_url(url)
+
+    # Parsed url
+    parsedUrl = urlparse("//" + url)
+    return parsedUrl.netloc
 
 # urllib implementation does only basic functionality
 # It does not provide sitemap parsing
@@ -26,7 +48,7 @@ def robotsparse(url):
     except (HTTPError, URLError) as e:
         print(e)
         print("robots.txt inaccessible for site:", url)
-        return rp, [], None
+        return '', ''
 
     # Parse according data
     rp.parse(uo.splitlines())
@@ -36,15 +58,12 @@ def robotsparse(url):
     
     # For each sitemap if for some reason hosted on multiple urls
     # Get all location urls
-    locations = []
+    sitemap_contents = ""
     for sitemap in sitemaps:
         sm = str(urlopen(sitemap).read())
-        locs = re.findall("<loc>([^<>]+)</loc>", sm)
-        locations += locs
+        sitemap_contents += sm
     
-    # Return sitemap
-    sitemap = sitemaps[0] if len(sitemaps) > 0 else None
-    return rp, locations, sitemap
+    return unquote(str(rp)), sitemap_contents
 
 # Url canonization
 def canonize_url(url_string):
