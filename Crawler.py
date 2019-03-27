@@ -89,16 +89,16 @@ class Crawler:
         self.session.commit()
 
     def process_website(self, url, website):
-        self = self
+        pass
         # self.session.query(Page).filter(Page.html_content == website).count() <= 0
         #print("website:", website)
 
     def process_documents(self, url, documents):
-        self = self
+        pass
         #print("documents:",documents)
 
     def process_images(self, url, images):
-        self = self
+        pass
         #print("images:",images)
 
 Crawler()
