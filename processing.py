@@ -81,18 +81,36 @@ class WrappedPool:
         self.load_frontier()
         self.exec()
 
+    # Get or make robotsparser
+    def get_make_robotsparser(self, rp_url):
+        if self.rp_dict is None:
+            sites = self.session.query(Site).all()
+            self.rp_dict = dict()
+            for site in sites:
+                rp = get_robotparser(site.robots_content)
+                rp_dict[get_domain(site.domain)] = rp
+        
+        dmn = get_domain(rp_url)
+        if dmn in self.rp_dict():
+            return self.rp_dict[dmn]
+        else:
+            rp, sitemap = robotsparse(dmn)
+            s = Site(domain=dmn, robots_content=rp, sitemap_content=sitemap)
+            self.session.add(s)
+            self.session.commit()
+            rbp = get_robotparser(rp)
+            self.rp_dict[dmn] = rbp
+            return rbp
+
     # Execute pool process
     def exec(self):
         with concurrent.futures.ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            # Make safe robotparser pass
-            safe_rp = get_robotparser('')
-            make_safe_rp = lambda rp_url: self.rp_dict[get_domain(rp_url)] if self.rp_dict is not None and get_domain(rp_url) in self.rp_dict else safe_rp
             try:
                 if len(self.params_list) > self.max_size:
                     for parm in self.params_list[self.max_size:]:
                         self.frontier.put(parm)
                     self.params_list = self.params_list[:self.max_size]
-                futures = {executor.submit(self.func, canonize_url(params), make_safe_rp(params) ): params for params in self.params_list}
+                futures = {executor.submit(self.func, canonize_url(params), self.get_make_robotsparser(params) ): params for params in self.params_list}
                 while futures:
                     fin,nfin = concurrent.futures.wait(futures, timeout=0.1, return_when=concurrent.futures.FIRST_COMPLETED)
                     if len(fin) > 0:

@@ -29,8 +29,6 @@ def processSiteUrl(url, robotsparser, driver):
         return seleniumGetContents(url, robotsparser, driver)
 
 
-
-
 # async def getSiteContent(url, robotsparser, contentType = ContentType.HTML):
 #     async with aiohttp.ClientSession() as session:
 #         rp, locations, sitemap = robotsparse(url)
@@ -117,12 +115,7 @@ async def temp(url):
 
 
 def tempSelenium(url):
-    platform_driver = './platform_dependent/win_chromedriver.exe'
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-
     driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
-
 
     time_accessed=datetime.datetime.now()
     print(time_accessed)
@@ -149,7 +142,6 @@ def tempSelenium(url):
                 add_to_frontier.append(current_link)
 
     driver.close()
-    return {"add_to_frontier": add_to_frontier, "website": {"content": htmlContent, "page_type": "HTML"},
-            "images": images, "time_accessed": time_accessed}
+    return {"add_to_frontier": add_to_frontier, "website": {"content": htmlContent, "page_type": "HTML", "time_accessed": time_accessed, "images": images} }
 
 tempSelenium("http://evem.gov.si")

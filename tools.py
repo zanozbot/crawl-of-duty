@@ -4,7 +4,22 @@ import urllib.robotparser
 from urllib.parse import urlparse, unquote
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
-from enum import Enum
+from enum import Enum    
+
+
+# Drivers linux/windows/osx
+platform_driver = ''
+if sys.platform.startswith('linux'):
+    platform_driver = './platform_dependent/linux_chromedriver'
+elif sys.platform.startswith('win') or sys.platform.startswith('cygwin'):
+    platform_driver = './platform_dependent/win_chromedriver.exe'
+elif sys.platform.startswith('darwin'):
+    platform_driver = './platform_dependent/osx_chromedriver'
+
+# Chrome execute arguments
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+
 
 # Find locations in sitemap
 def get_sitemap_locations(sitemap):

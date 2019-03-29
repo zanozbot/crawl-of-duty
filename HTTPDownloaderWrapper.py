@@ -3,19 +3,7 @@ import multiprocessing
 # Selenium
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
-
-# Drivers linux/windows/osx
-platform_driver = ''
-if sys.platform.startswith('linux'):
-    platform_driver = './platform_dependent/linux_chromedriver'
-elif sys.platform.startswith('win') or sys.platform.startswith('cygwin'):
-    platform_driver = './platform_dependent/win_chromedriver.exe'
-elif sys.platform.startswith('darwin'):
-    platform_driver = './platform_dependent/osx_chromedriver'
-
-# Chrome execute arguments
-chrome_options = Options()
-chrome_options.add_argument("--headless")
+from tools import platform_driver, chrome_options
 
 driver_list = dict()
 def processSiteUrlWrapper(url, robotsparser):

@@ -53,8 +53,6 @@ class Crawler:
         pool.register_callback("add_to_frontier", self.process_links)
         # "documents" contains an array of documents
         pool.register_callback("documents", self.process_documents)
-        # "images" contains an array of images
-        pool.register_callback("images", self.process_images)
 
         # Get the number of urls in frontier
         rows = self.session.query(Frontier).count()
@@ -92,17 +90,29 @@ class Crawler:
     def process_website(self, url, website):
         domain = get_domain(url)
         site = self.session.query(Site).filter(Site.domain == domain).one()
-        page = self.session.add(Page(site_id=site.id, page_type_code=website["data_type"], url=url, html_content=website["content"], http_status_code="TODO", accessed_time="TODO"))
-        page_data = self.session.add(PageData(page_id=page.id, data_type_code="PDF"))
+        page = self.session.add(
+            Page(
+                site_id=site.id, 
+                page_type_code=website["page_type"], 
+                url=url, 
+                html_content=website["content"], 
+                http_status_code=website["status_code"],
+                accessed_time=website["accessed_time"]
+            )
+        )
+        self.session.commit()
+        
+        imageObjects = []
+        #for image in website["images"]:
+        #    imageObjects.append(Image(page_id=page.id, ))
+
+        self.session.add_all(imageObjects)
+        self.session.commit()
+        page_data = self.session.add(PageData(page_id=page.id, data_type_code=website["data_type"])
         # self.session.query(Page).filter(Page.html_content == website).count() <= 0
         #print("website:", website)
 
     def process_documents(self, url, documents):
         pass
-        #print("documents:",documents)
-
-    def process_images(self, url, images):
-        pass
-        #print("images:",images)
 
 Crawler()
