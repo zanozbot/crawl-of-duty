@@ -5,7 +5,10 @@ import xml.etree.ElementTree as ET
 from tools import *
 import sys
 import tldextract
-
+import asyncio
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+import datetime
 
 # return a dictionary with appropriate values
 # "add_to_frontier" should be an array of urls found on the website.
@@ -14,13 +17,14 @@ import tldextract
 # gets called when returned. An example of that is in Crawler.py
 def processSiteUrl(url, robotsparser, driver):
     # Call appropriate code
+    time = datetime.now()
     if url.endswith('pdf') \
             or url.endswith('doc') \
             or url.endswith('docx') \
-            or url.endswith('doc') \
             or url.endswith('ppt') \
             or url.endswith('pptx'):
-        return {"add_to_frontier": [], "website": getBinaryFile(url, robotsparser)}
+        file_content, headers = getBinaryFile(url, robotsparser)
+        return {"website": {"content": file_content, "page_type": "BINARY", "data_type": headers["Content-Type"]}, "time_accessed": time}
     else:
         return seleniumGetContents(url, robotsparser, driver)
 
@@ -70,25 +74,32 @@ def processSiteUrl(url, robotsparser, driver):
 def seleniumGetContents(url, robotsparser, driver):
     driver.get(url)
     htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
+    time_accessed=datetime.datetime.now()
+
     # print(htmlContent)
     add_to_frontier = []
     images = []
+    text =""
     rp, locations, sitemap = robotsparse(url)
     if robotsparser.can_fetch("*", url):
         for link in htmlContent.find_all('img'):
             current_link = link.get('src')
             if current_link:
-                images.append(getBinaryFile(current_link, robotsparser))
+                extracted_url = tldextract.extract(current_link)
+                # TODO: Check if this is good for all. Add try catch block?
+                if extracted_url.suffix != 'data' and extracted_url.domain != 'cms':
+                    text, headers = asyncio.run(temp(current_link))
+                images.append(text)
         for link in htmlContent.find_all('a'):
             current_link = link.get('href')
-            
+
             if current_link:
                 link_extract = tldextract.extract(current_link)
                 if link_extract.suffix == 'gov':
                     add_to_frontier.append(current_link)
 
         driver.close()
-    return {"add_to_frontier" : add_to_frontier, "website" : htmlContent, "images" : images}
+    return {"add_to_frontier" : add_to_frontier, "website" : {"content": htmlContent, "page_type": "HTML"}, "images": images, "time_accessed": time_accessed}
 
 async def getBinaryFile(url, robotsparser):
     async with aiohttp.ClientSession() as session:
@@ -96,4 +107,49 @@ async def getBinaryFile(url, robotsparser):
         if robotsparser.can_fetch("*", url):
             async with session.get(url) as resp:
                 text = await resp.read()
-                return text 
+                return text, resp.headers
+
+async def temp(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            text = await resp.read()
+            return text, resp.headers
+
+
+def tempSelenium(url):
+    platform_driver = './platform_dependent/win_chromedriver.exe'
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+
+    driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
+
+
+    time_accessed=datetime.datetime.now()
+    print(time_accessed)
+    driver.get(url)
+    htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
+    # print(htmlContent)
+    add_to_frontier = []
+    images = []
+    text = ""
+    for link in htmlContent.find_all('img'):
+        current_link = link.get('src')
+        if current_link:
+            extracted_url = tldextract.extract(current_link)
+            #TODO: Check if this is good for all. Add try catch block?
+            if extracted_url.suffix != 'data' and extracted_url.domain != 'cms':
+                text, headers = asyncio.run(temp(current_link))
+            images.append(text)
+    for link in htmlContent.find_all('a'):
+        current_link = link.get('href')
+
+        if current_link:
+            link_extract = tldextract.extract(current_link)
+            if link_extract.suffix == 'gov':
+                add_to_frontier.append(current_link)
+
+    driver.close()
+    return {"add_to_frontier": add_to_frontier, "website": {"content": htmlContent, "page_type": "HTML"},
+            "images": images, "time_accessed": time_accessed}
+
+tempSelenium("http://evem.gov.si")

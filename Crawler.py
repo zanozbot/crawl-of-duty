@@ -4,6 +4,7 @@ from processing import WrappedPool, create_pool_object
 import re
 from tools import *
 from HTTPDownloaderWrapper import *
+from tools import get_domain
 
 # List of seed urls
 seed_list = [
@@ -89,7 +90,10 @@ class Crawler:
         self.session.commit()
 
     def process_website(self, url, website):
-        pass
+        domain = get_domain(url)
+        site = self.session.query(Site).filter(Site.domain == domain).one()
+        page = self.session.add(Page(site_id=site.id, page_type_code=website["data_type"], url=url, html_content=website["content"], http_status_code="TODO", accessed_time="TODO"))
+        page_data = self.session.add(PageData(page_id=page.id, data_type_code="PDF"))
         # self.session.query(Page).filter(Page.html_content == website).count() <= 0
         #print("website:", website)
 
