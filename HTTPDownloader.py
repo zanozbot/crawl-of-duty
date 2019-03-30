@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ET
 from tools import *
 import sys
 import tldextract
-import asyncio
-from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException
 from selenium import webdriver
-import datetime
+from datetime import datetime
+import requests
 
 # return a dictionary with appropriate values
 # "add_to_frontier" should be an array of urls found on the website.
@@ -23,8 +23,8 @@ def processSiteUrl(url, robotsparser, driver):
             or url.endswith('docx') \
             or url.endswith('ppt') \
             or url.endswith('pptx'):
-        file_content, headers = getBinaryFile(url, robotsparser)
-        return {"website": {"content": file_content, "page_type": "BINARY", "data_type": headers["Content-Type"]}, "time_accessed": time}
+        file_content, headers, status_code = getBinaryFile(url, robotsparser)
+        return {"document": {"content": file_content, "page_type": "BINARY", "status_code": status_code, "data_type": get_datatype_from_header(headers), "time_accessed": time}}
     else:
         return seleniumGetContents(url, robotsparser, driver)
 
@@ -70,54 +70,66 @@ def processSiteUrl(url, robotsparser, driver):
 
 
 def seleniumGetContents(url, robotsparser, driver):
-    driver.get(url)
-    htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
-    time_accessed=datetime.datetime.now()
-
-    # print(htmlContent)
     add_to_frontier = []
     images = []
     text =""
-    rp, locations, sitemap = robotsparse(url)
+    headers=dict()
+
     if robotsparser.can_fetch("*", url):
+        try:
+            driver.get(url)
+        except TimeoutException as ex:
+            print("WEBSITE TOOK TOO LONG TO RESPOND:", url)
+            return {}
+
+        htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
+        time_accessed = datetime.now()
         for link in htmlContent.find_all('img'):
             current_link = link.get('src')
             if current_link:
                 extracted_url = tldextract.extract(current_link)
                 # TODO: Check if this is good for all. Add try catch block?
                 if extracted_url.suffix != 'data' and extracted_url.domain != 'cms':
-                    text, headers = asyncio.run(temp(current_link))
-                images.append(text)
+                    text, headers, status_code = temp(canonize_url(current_link,url))
+                    if text is not None:
+                        images.append(text)
+                elif extracted_url == 'data':
+                    images.append(current_link)
         for link in htmlContent.find_all('a'):
             current_link = link.get('href')
 
             if current_link:
                 link_extract = tldextract.extract(current_link)
-                if link_extract.suffix == 'gov':
-                    add_to_frontier.append(current_link)
+                if link_extract.suffix == 'si' and link_extract.domain == 'gov':
+                    # Do not add these to frontier
+                    mtch = re.match('.*(?:mailto\:|callto\:|sms\:|tel\:).*',current_link)
+                    if mtch is None:
+                        add_to_frontier.append(current_link)
+        cur_text, headers, status_code = temp(url)
+        if status_code is None:
+            status_code = 204
+        return {"add_to_frontier" : add_to_frontier, "website" : {"content": str(htmlContent), "status_code": status_code, "page_type": "HTML", "images": images, "time_accessed": time_accessed}}
+    return {}
 
-        driver.close()
-    return {"add_to_frontier" : add_to_frontier, "website" : {"content": htmlContent, "page_type": "HTML"}, "images": images, "time_accessed": time_accessed}
-
-async def getBinaryFile(url, robotsparser):
-    async with aiohttp.ClientSession() as session:
-        rp, locations, sitemap = robotsparse(url)
+def getBinaryFile(url, robotsparser):
+    try:
         if robotsparser.can_fetch("*", url):
-            async with session.get(url) as resp:
-                text = await resp.read()
-                return text, resp.headers
+            response = requests.get(url, timeout=30)
+            return response.text, response.headers, response.status_code
+    except:
+        return None, None, None
 
-async def temp(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            text = await resp.read()
-            return text, resp.headers
-
+def temp(url):
+    try:
+        response = requests.get(url, timeout=30)
+        return response.text, response.headers, response.status_code
+    except:
+        return None, None, None
 
 def tempSelenium(url):
     driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
 
-    time_accessed=datetime.datetime.now()
+    time_accessed=datetime.now()
     print(time_accessed)
     driver.get(url)
     htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
@@ -125,23 +137,26 @@ def tempSelenium(url):
     add_to_frontier = []
     images = []
     text = ""
+    headers=dict()
     for link in htmlContent.find_all('img'):
         current_link = link.get('src')
         if current_link:
             extracted_url = tldextract.extract(current_link)
             #TODO: Check if this is good for all. Add try catch block?
             if extracted_url.suffix != 'data' and extracted_url.domain != 'cms':
-                text, headers = asyncio.run(temp(current_link))
-            images.append(text)
+                text, headers, status_code = temp(current_link)
+                if text is not None:
+                    images.append(text)
     for link in htmlContent.find_all('a'):
         current_link = link.get('href')
 
         if current_link:
             link_extract = tldextract.extract(current_link)
-            if link_extract.suffix == 'gov':
+            if link_extract.domain == 'gov' and link_extract.suffix == 'si':
                 add_to_frontier.append(current_link)
 
     driver.close()
-    return {"add_to_frontier": add_to_frontier, "website": {"content": htmlContent, "page_type": "HTML", "time_accessed": time_accessed, "images": images} }
-
-tempSelenium("http://evem.gov.si")
+    cur_text, headers, status_code = temp(url)
+    if status_code is None:
+        status_code = 204
+    return {"add_to_frontier": add_to_frontier, "website": {"content": str(htmlContent), "status_code": status_code, "page_type": "HTML", "time_accessed": time_accessed, "images": images} }

@@ -5,6 +5,7 @@ import re
 from tools import *
 from HTTPDownloaderWrapper import *
 from tools import get_domain
+import hashlib
 
 # List of seed urls
 seed_list = [
@@ -15,7 +16,7 @@ seed_list = [
     "e-prostor.gov.si",
     # Selected
     "www.arso.gov.si",
-    "gu.gov.si",
+    "www.gu.gov.si",
     "mop.gov.si",
     "mju.gov.si",
     "www.ess.gov.si"
@@ -48,11 +49,8 @@ class Crawler:
         # Register callbacks
         # "website" expects a list with appropriate data
         pool.register_callback("website", self.process_website)
-        # "add_to_frontier" contains same data as used by processing.py. 
-        # It is a list of links
-        pool.register_callback("add_to_frontier", self.process_links)
         # "documents" contains an array of documents
-        pool.register_callback("documents", self.process_documents)
+        pool.register_callback("document", self.process_documents)
 
         # Get the number of urls in frontier
         rows = self.session.query(Frontier).count()
@@ -81,38 +79,120 @@ class Crawler:
                         seeds.append(nrm)
             pool.start_with_parameters_list(seeds)
 
-    def process_links(self, url, links):
+    def process_links(self, url, parentUrl, links):
         links = [canonize_url(link) for link in links]
-        linkObjs = [Link(from_page=url, to_page=link) for link in links]
-        self.session.add_all(linkObjs)
-        self.session.commit()
-
-    def process_website(self, url, website):
-        domain = get_domain(url)
-        site = self.session.query(Site).filter(Site.domain == domain).one()
-        page = self.session.add(
-            Page(
-                site_id=site.id, 
-                page_type_code=website["page_type"], 
-                url=url, 
-                html_content=website["content"], 
-                http_status_code=website["status_code"],
-                accessed_time=website["accessed_time"]
-            )
-        )
-        self.session.commit()
         
+
+    def process_website(self, url, parentUrl, website):
+        page = self.session.query(Page).filter(Page.url == url).first()
+        parentPage = self.session.query(Page).filter(Page.url == parentUrl).first()
+        if (page is not None and 
+            parentPage is not None and 
+            self.session.query(Link).filter(Link.from_page == parentPage.id).filter(Link.to_page == page.id).first() is not None):
+            return
+        print(url)
+        domain = get_domain(url)
+        site = self.session.query(Site).filter(Site.domain == domain).first()
+        if site is None:
+            rp, sitemap = robotsparse(domain)
+            site = Site(domain=domain, robots_content=rp, sitemap_content=sitemap)
+            self.session.add(s)
+            self.session.flush()
+
+        html_hash = hashlib.sha512(website["content"].encode('utf-8')).hexdigest()
+        page = self.session.query(Page).filter(Page.url == url).first()
+        if page is None:
+            page = self.session.query(Page).filter(Page.html_hash == html_hash).first()
+            if page is None:
+                page = Page(
+                    site_id=site.id, 
+                    page_type_code=website["page_type"], 
+                    url=url, 
+                    html_content=website["content"],
+                    html_hash=html_hash,
+                    http_status_code=website["status_code"],
+                    accessed_time=website["time_accessed"]
+                )
+                self.session.add(page)
+                self.session.flush()
+            else:
+                page = Page(
+                    site_id=site.id, 
+                    page_type_code=website["page_type"], 
+                    url=url, 
+                    html_content=None,
+                    html_hash=None,
+                    http_status_code=website["status_code"],
+                    accessed_time=website["time_accessed"]
+                )
+                self.session.add(page)
+                self.session.flush()
+        else:
+            return
+    
+        if parentPage is not None and self.session.query(Link).filter(Link.from_page == parentPage.id).filter(Link.to_page == page.id).first() is None:
+            linkObj = Link(from_page=parentPage.id, to_page=page.id)
+            self.session.add(linkObj)
+            self.session.commit()
+
         imageObjects = []
         #for image in website["images"]:
         #    imageObjects.append(Image(page_id=page.id, ))
 
         self.session.add_all(imageObjects)
         self.session.commit()
-        page_data = self.session.add(PageData(page_id=page.id, data_type_code=website["data_type"])
+
+        self.session.flush()
         # self.session.query(Page).filter(Page.html_content == website).count() <= 0
         #print("website:", website)
 
-    def process_documents(self, url, documents):
-        pass
+    def process_documents(self, url, parentUrl, document):
+        domain = get_domain(url)
+        site = self.session.query(Site).filter(Site.domain == domain).first()
+        if site is None:
+            rp, sitemap = robotsparse(domain)
+            site = Site(domain=domain, robots_content=rp, sitemap_content=sitemap)
+            self.session.add(s)
+            self.session.flush()
+        
+        page = self.session.query(Page).filter(Page.url == url).first()
+        if page is None:
+            page = Page(
+                site_id=site.id, 
+                page_type_code=document["page_type"], 
+                url=url, 
+                html_content=None,
+                html_hash=None,
+                http_status_code=document["status_code"],
+                accessed_time=document["time_accessed"]
+            )
+            self.session.add(page)
+            self.session.flush()
+        
+        encoded_content = b''
+        try:
+            encoded_content = bytearray(document["content"].encode('ascii'))
+        except:
+            try:
+                encoded_content = bytearray(document["content"].encode('utf-8'))
+            except:
+                print("CANNOT ENCODE DOCUMENT INTO BYTE ARRAY")
+                return
+        page_data = self.session.add(
+            PageData(
+                page_id=page.id,
+                data_type_code=document["data_type"],
+                data=encoded_content
+            )
+        )
+        self.session.commit()
+
+        parentPage = self.session.query(Page).filter(Page.url == url).first()
+        if parentPage is not None and self.session.query(Link).filter(Link.from_page == parentPage.id).filter(Link.to_page == page.id).first() is None:
+            linkObj = Link(from_page=parentPage.id, to_page=page.id)
+            self.session.add(linkObj)
+            self.session.commit()
+            self.session.flush()
+
 
 Crawler()

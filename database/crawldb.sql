@@ -2,6 +2,7 @@ CREATE SCHEMA IF NOT EXISTS crawldb;
 
 CREATE TABLE crawldb.frontier (
 	url                 varchar(3000)  NOT NULL,
+	parent_url          varchar(3000)  NULL,
 	CONSTRAINT pk_frontier_url PRIMARY KEY ( url )
  );
 
@@ -32,13 +33,14 @@ CREATE TABLE crawldb.page (
 	html_content         text  ,
 	http_status_code     integer  ,
 	accessed_time        timestamp  ,
+	html_hash            char(128),
 	CONSTRAINT pk_page_id PRIMARY KEY ( id ),
 	CONSTRAINT unq_url_idx UNIQUE ( url ) 
  );
 
 CREATE INDEX "idx_page_site_id" ON crawldb.page ( site_id );
 
-CREATE INDEX "idx_page_html_content" ON crawldb.page ( html_content );
+CREATE INDEX "idx_page_html_hash" ON crawldb.page ( html_hash );
 
 CREATE INDEX "idx_page_page_type_code" ON crawldb.page ( page_type_code );
 

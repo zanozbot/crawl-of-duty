@@ -23,6 +23,8 @@ def processSiteUrlWrapper(url, robotsparser):
     driver = None
     if pid not in driver_list:
         driver = driver_list[pid] = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
+        driver.set_page_load_timeout(10)
+        driver.implicitly_wait(10)
     else:
         driver = driver_list[pid]
 

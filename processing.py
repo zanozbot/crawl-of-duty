@@ -49,16 +49,18 @@ class WrappedPool:
     # Load frontier
     def load_frontier(self):
         rows = self.session.query(Frontier).all()
-        self.params_list = [row.url for row in rows]
+        self.params_list = [ (row.parent_url, row.url) for row in rows]
         self.session.query(Frontier).delete()
         self.session.commit()
 
     # Save frontier
     def save_frontier(self):
-        ls = list()
+        ls = set()
         while not self.frontier.empty():
-            ls.append(Frontier(url=self.frontier.get()))
-        self.session.add_all(ls)
+            urls = self.frontier.get()
+            ls.add(Frontier(url=urls[1], parent_url=urls[0]))
+        self.session.query(Frontier).delete()
+        self.session.add_all(list(ls))
         self.session.commit()
 
     # Callback registration
@@ -67,13 +69,13 @@ class WrappedPool:
 
     # Start pool with parameters to pass to function
     def start_with_parameters(self, *params):
-        self.params_list.append(params)
+        self.params_list.append((None, params))
         self.exec()
 
     # Start pool with a list of parameters to pass to function
     def start_with_parameters_list(self, params):
         for param in params:
-            self.params_list.append(param)
+            self.params_list.append((None, param))
         self.exec()
 
     # Start pool with frontier
@@ -91,7 +93,7 @@ class WrappedPool:
                 rp_dict[get_domain(site.domain)] = rp
         
         dmn = get_domain(rp_url)
-        if dmn in self.rp_dict():
+        if dmn in self.rp_dict:
             return self.rp_dict[dmn]
         else:
             rp, sitemap = robotsparse(dmn)
@@ -110,33 +112,36 @@ class WrappedPool:
                     for parm in self.params_list[self.max_size:]:
                         self.frontier.put(parm)
                     self.params_list = self.params_list[:self.max_size]
-                futures = {executor.submit(self.func, canonize_url(params), self.get_make_robotsparser(params) ): params for params in self.params_list}
+                futures = {executor.submit(self.func, canonize_url(params[1]), self.get_make_robotsparser(params[1]) ): params for params in self.params_list}
                 while futures:
                     fin,nfin = concurrent.futures.wait(futures, timeout=0.1, return_when=concurrent.futures.FIRST_COMPLETED)
                     if len(fin) > 0:
                         for f in list(fin):
                             popped = futures.pop(f,None)
                             if popped is not None:
-                                self.processed.add(popped)
+                                self.processed.add(popped[1])
                             res = f.result()
                             if ("add_to_frontier" in res):
+                                res["add_to_frontier"] = [canonize_url(pr, popped[1]) for pr in res["add_to_frontier"]]
                                 for prm in res["add_to_frontier"]:
-                                    cprm = canonize_url(prm)
-                                    cprm_not_in_db = self.session.query(Page).filter(Page.url == cprm).count() <= 0
-                                    if cprm_not_in_db and cprm not in self.processed:
-                                        self.frontier.put(cprm)
-                                res["add_to_frontier"] = [self.canonize_url(pr) for pr in res["add_to_frontier"]]
+                                    prm_not_in_db = self.session.query(Page).filter(Page.url == prm).first() is None
+                                    if prm_not_in_db and prm not in self.processed:
+                                        self.frontier.put((popped[1], prm))
+                                        self.processed.add(prm)
+                                
                             for k in res:
                                 if (k in self.callback):
-                                    self.callback[k](popped, res[k])
+                                    self.callback[k](popped[1], popped[0], res[k])
                             
                     
                     print("\033[K",end='\r')
-                    print("Current frontier size:", str(self.frontier.qsize()), end='\r')
+                    print("# in frontier:", str(self.frontier.qsize()), end='\r')
                     
                     while not self.frontier.empty() and len(futures) < self.max_size:
                         prms = self.frontier.get()
-                        futures[executor.submit(self.func, canonize_url(prms), make_safe_rp(prms))] = prms
+                        prm_not_in_db = self.session.query(Page).filter(Page.url == prms[1]).first() is None
+                        if prm_not_in_db:
+                            futures[executor.submit(self.func, canonize_url(prms[1]),  self.get_make_robotsparser(prms[1]))] = prms
 
                 for l in range(self.max_size):
                     executor.submit(self.func, None, None)
