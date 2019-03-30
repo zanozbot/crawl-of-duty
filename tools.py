@@ -19,7 +19,7 @@ elif sys.platform.startswith('darwin'):
 
 # Chrome execute arguments
 chrome_options = Options()
-#chrome_options.add_argument("--headless")
+chrome_options.add_argument("--headless")
 
 # Get datatype from header
 def get_datatype_from_header(header):

@@ -44,7 +44,7 @@ class Crawler:
 
 
         # Create process pool
-        pool = create_pool_object(processSiteUrlWrapper, session=self.session, max_workers=4, max_size=16)
+        pool = create_pool_object(processSiteUrlWrapper, session=self.session, max_workers=8, max_size=16)
         
         # Register callbacks
         # "website" expects a list with appropriate data
@@ -135,12 +135,22 @@ class Crawler:
             self.session.add(linkObj)
             self.session.commit()
 
-        imageObjects = []
-        #for image in website["images"]:
-        #    imageObjects.append(Image(page_id=page.id, ))
+        if "images" in website:
+            imageObjects = []
+            for image in website["images"]:
+                encoded_content = b''
+                try:
+                    encoded_content = bytearray(image[0].encode('ascii'))
+                except:
+                    try:
+                        encoded_content = bytearray(image[0].encode('utf-8'))
+                    except:
+                        print("CANNOT ENCODE IMAGE INTO BYTE ARRAY")
+                        return
+                imageObjects.append(Image(page_id=page.id, filename='', content_type=(image[1]['Content-Type'] if 'Content-Type' in image[1] else 'image/data'), data=encoded_content, accessed_time=image[3]))
 
-        self.session.add_all(imageObjects)
-        self.session.commit()
+            self.session.add_all(imageObjects)
+            self.session.commit()
 
         self.session.flush()
         # self.session.query(Page).filter(Page.html_content == website).count() <= 0

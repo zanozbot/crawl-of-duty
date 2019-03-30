@@ -18,55 +18,20 @@ import requests
 def processSiteUrl(url, robotsparser, driver):
     # Call appropriate code
     time = datetime.now()
+
     if url.endswith('pdf') \
             or url.endswith('doc') \
             or url.endswith('docx') \
             or url.endswith('ppt') \
             or url.endswith('pptx'):
+        # COMMENT THIS LINE ON SECOND RUN!
         file_content, headers, status_code = getBinaryFile(url, robotsparser)
+        # COMMENT THIS LINE ON SECOND RUN!
         return {"document": {"content": file_content, "page_type": "BINARY", "status_code": status_code, "data_type": get_datatype_from_header(headers), "time_accessed": time}}
+        # UNCOMMENT THIS LINE ON SECOND RUN!
+        # return {}
     else:
         return seleniumGetContents(url, robotsparser, driver)
-
-
-# async def getSiteContent(url, robotsparser, contentType = ContentType.HTML):
-#     async with aiohttp.ClientSession() as session:
-#         rp, locations, sitemap = robotsparse(url)
-#         if robotsparser.can_fetch("*", url):
-#             if contentType == ContentType.HTML:
-#                 async with session.get(url) as resp:
-#                     text = await resp.read()
-#                     print(text)
-#             elif contentType == ContentType.HEAD:
-#                 async with session.get(url) as resp:
-#                     text = resp.headers
-#         else:
-#             return ""
-
-#     if contentType == ContentType.HTML:
-#         # print(BeautifulSoup(text.decode('utf-8'), 'html5lib'))
-#         htmlContent = BeautifulSoup(text.decode('utf-8'), 'html5lib')
-#         documents = []
-#         images = []
-#         for link in htmlContent.find_all('img'):
-#             current_link = link.get('src')
-#             if current_link:
-#                 images.append(current_link)
-#         for link in htmlContent.find_all('a'):
-#             current_link = link.get('href')
-#             if current_link :
-#                 if current_link.endswith('pdf') \
-#                             or current_link.endswith('doc') \
-#                             or current_link.endswith('docx') \
-#                             or current_link.endswith('doc') \
-#                             or current_link.endswith('ppt') \
-#                             or current_link.endswith('pptx'):
-#                     documents.append(current_link)
-#         return htmlContent, documents, images
-#     elif contentType == ContentType.HEAD:
-#         # print(text.decode('utf-8'))
-#         return text, [], []
-
 
 
 def seleniumGetContents(url, robotsparser, driver):
@@ -84,17 +49,22 @@ def seleniumGetContents(url, robotsparser, driver):
 
         htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
         time_accessed = datetime.now()
+
+        # COMMENT THIS WHOLE BLOCK ON SECOND RUN!
         for link in htmlContent.find_all('img'):
             current_link = link.get('src')
             if current_link:
                 extracted_url = tldextract.extract(current_link)
                 # TODO: Check if this is good for all. Add try catch block?
+                # WAS NOT CHECKED
                 if extracted_url.suffix != 'data' and extracted_url.domain != 'cms':
-                    text, headers, status_code = temp(canonize_url(current_link,url))
-                    if text is not None:
-                        images.append(text)
+                    text, headers, status_code = getBinaryFile(canonize_url(current_link,url), robotsparser)
+                    if text is not None and headers is not None and status_code is not None:
+                        images.append((text, headers, status_code, datetime.now()))
                 elif extracted_url == 'data':
-                    images.append(current_link)
+                    images.append([current_link, {}, status_code, datetime.now()])
+        # END OF BLOCK
+        
         for link in htmlContent.find_all('a'):
             current_link = link.get('href')
 
@@ -125,38 +95,3 @@ def temp(url):
         return response.text, response.headers, response.status_code
     except:
         return None, None, None
-
-def tempSelenium(url):
-    driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
-
-    time_accessed=datetime.now()
-    print(time_accessed)
-    driver.get(url)
-    htmlContent = BeautifulSoup(driver.page_source, 'html5lib')
-    # print(htmlContent)
-    add_to_frontier = []
-    images = []
-    text = ""
-    headers=dict()
-    for link in htmlContent.find_all('img'):
-        current_link = link.get('src')
-        if current_link:
-            extracted_url = tldextract.extract(current_link)
-            #TODO: Check if this is good for all. Add try catch block?
-            if extracted_url.suffix != 'data' and extracted_url.domain != 'cms':
-                text, headers, status_code = temp(current_link)
-                if text is not None:
-                    images.append(text)
-    for link in htmlContent.find_all('a'):
-        current_link = link.get('href')
-
-        if current_link:
-            link_extract = tldextract.extract(current_link)
-            if link_extract.domain == 'gov' and link_extract.suffix == 'si':
-                add_to_frontier.append(current_link)
-
-    driver.close()
-    cur_text, headers, status_code = temp(url)
-    if status_code is None:
-        status_code = 204
-    return {"add_to_frontier": add_to_frontier, "website": {"content": str(htmlContent), "status_code": status_code, "page_type": "HTML", "time_accessed": time_accessed, "images": images} }
