@@ -42,7 +42,6 @@ class Crawler:
             self.session.add_all(sites)
             self.session.commit()
 
-
         # Create process pool
         pool = create_pool_object(processSiteUrlWrapper, session=self.session, max_workers=8, max_size=16)
         
@@ -136,6 +135,7 @@ class Crawler:
             self.session.commit()
 
         if "images" in website:
+            image_mimes = {".png", ".pgm", ".jpeg", ".gif", ".bmp", ".tiff", ".svg", ".webp"}
             imageObjects = []
             for image in website["images"]:
                 encoded_content = b''
@@ -147,14 +147,14 @@ class Crawler:
                     except:
                         print("CANNOT ENCODE IMAGE INTO BYTE ARRAY")
                         return
-                imageObjects.append(Image(page_id=page.id, filename='', content_type=(image[1]['Content-Type'] if 'Content-Type' in image[1] else 'image/data'), data=encoded_content, accessed_time=image[3]))
+                mime_type = get_mime_type_from_header(image[1])
+                if mime_type in image_mimes:
+                    imageObjects.append(Image(page_id=page.id, filename='', content_type=mime_type, data=encoded_content, accessed_time=image[3]))
 
             self.session.add_all(imageObjects)
             self.session.commit()
 
         self.session.flush()
-        # self.session.query(Page).filter(Page.html_content == website).count() <= 0
-        #print("website:", website)
 
     def process_documents(self, url, parentUrl, document):
         domain = get_domain(url)

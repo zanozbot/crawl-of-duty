@@ -7,6 +7,8 @@ from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 from enum import Enum    
 import w3lib.url
+import requests
+from time import sleep
 
 # Drivers linux/windows/osx
 platform_driver = ''
@@ -22,22 +24,63 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 
 # Get datatype from header
-def get_datatype_from_header(header):
+def get_mime_type_from_header(header):
+    matchStr = (
+        "(application\/|image\/|text\/)"
+        "(json|jpeg|x-citrix-jpeg"
+        "|vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "|vnd.ms-powerpoint"
+        "|vnd.openxmlformats-officedocument.presentationml.presentation"
+        "|msword"
+        "|pdf|png|x-citrix-png|x-png|x-portable-graymap"
+        "|gif|bmp|tiff|svg+xml|svg"
+        "|webp|xml"
+        "|xhtml+xml|xhtml|html)"
+    )
+
+    mimeDict = {
+        "application/json" : ".json",
+        "image/jpeg" : ".jpeg",
+        "image/x-citrix-jpeg" : ".jpeg",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : ".docx",
+        "application/docx" : ".docx",
+        "application/msword" : ".doc",
+        "application/doc" : ".doc",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" : ".pptx",
+        "application/pptx" : ".pptx",
+        "application/vnd.ms-powerpoint" : ".ppt",
+        "application/ppt" : ".ppt",
+        "application/pdf" : ".pdf",
+        "image/png" : ".png",
+        "image/x-citrix-png" : ".png",
+        "image/x-png" : ".png",
+        "image/x-portable-graymap" : ".pgm",
+        "image/pgm" : ".pgm",
+        "image/gif" : ".gif",
+        "image/bmp" : ".bmp",
+        "image/tiff" : ".tiff",
+        "image/svg+xml" : ".svg",
+        "image/svg" : ".svg",
+        "image/webp" : ".webp",
+        "application/xhtml+xml" : ".xhtml",
+        "application/xhtml" : ".xhtml",
+        "text/html" : ".html",
+        "text/xml" : ".xml",
+        "application/xml" : ".xml"
+    }
+
     ctype = header["Content-Type"]
-    mtch = re.search("(?:application\/).*(presentationml\.presentation|-powerpoint|pdf|wordprocessingml\.document|msword)", ctype);
+    mtch = re.search(matchStr, ctype)
     if mtch is not None:
-        if mtch.group(0).endswith('presentationml.presentation'):
-            return "PPT"
-        elif mtch.group(0).endswith('-powerpoint'):
-            return "PPTX"
-        elif mtch.group(0).endswith('pdf'):
-            return "PDF"
-        elif mtch.group(0).endswith('-powerpoint'):
-            return "PPTX"
-        elif mtch.group(0).endswith('wordprocessingml.document'):
-            return "DOCX"
-        elif mtch.group(0).endswith('msword'):
-            return "DOC"
+        return mimeDict[mtch.group(0)] if mtch.group(0) in mimeDict else "."+(mtch.group(0)[(mtch.group(0).index('/')+1):])
+    else:
+        return None
+
+def ending_to_datatype(ending):
+    if ending == ".xhtml" or ending == ".xml" or ending == ".html":
+        return "HTML"
+    else:
+        return ending.upper()[1:]
 
 # Find locations in sitemap
 def get_sitemap_locations(sitemap):
@@ -62,10 +105,9 @@ def get_domain(url):
     parsedUrl = urlparse(url)
     return canonize_url(parsedUrl.netloc)
 
-# urllib implementation does only basic functionality
-# It does not provide sitemap parsing
-def robotsparse(url):
-    rp = urllib.robotparser.RobotFileParser()
+
+# get data
+def get_robots_data(url):
     url = canonize_url(url)
 
     # Parsed url
@@ -75,20 +117,52 @@ def robotsparse(url):
     uo = ""
     try:
         if parsedUrl.scheme != '':
-            uo = urlopen(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt").read().decode("utf-8")
+            uo = urlopen(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt", timeout=10).read().decode("utf-8")
         else:
-            uo = urlopen("http://" + parsedUrl.netloc + "/robots.txt").read().decode("utf-8")
-            
+            uo = urlopen("http://" + parsedUrl.netloc + "/robots.txt", timeout=10).read().decode("utf-8")            
     except (HTTPError, URLError) as e:
         print(e)
         print("robots.txt inaccessible for site:", url)
-        return '', ''
+        return ""
+    return uo
+
+# urllib implementation does only basic functionality
+# It does not provide sitemap parsing
+def robotsparse(url):
+    rp = urllib.robotparser.RobotFileParser()
+
+    status_code = 300
+    max_red = 3
+    rd = ""
+    visited = set()
+    while (status_code // 100)%10 == 3:
+        if max_red <= 0:
+            return '', ''
+        rd = get_robots_data(url)
+        if rd == "":
+            sleep(5)
+            max_red -= 1
+            #Check redirect
+            parsedUrl = urlparse(canonize_url(url))
+            visited.add("http://"+parsedUrl.netloc)
+            try:
+                response = requests.head("http://"+parsedUrl.netloc, timeout=10)
+                status_code = response.status_code
+                if (status_code // 100)%10 == 3:
+                    url = canonize_url(response.headers["Location"])
+                    if "http://"+urlparse(url).netloc in visited:
+                        break
+            except:
+                return '',''
+            
+        else:
+            break
 
     # Parse according data
-    rp.parse(uo.splitlines())
+    rp.parse(rd.splitlines())
 
     # Find Sitemap.xml if exists
-    sitemaps = re.findall("Sitemap:\s+([A-Za-z0-9\-\.\_\~\:\/\?\#\[\]\@\!\$\&\(\)\*\+\,\;\=\%]+)", uo)
+    sitemaps = re.findall("Sitemap:\s+([A-Za-z0-9\-\.\_\~\:\/\?\#\[\]\@\!\$\&\(\)\*\+\,\;\=\%]+)", rd)
     
     # For each sitemap if for some reason hosted on multiple urls
     # Get all location urls
