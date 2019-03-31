@@ -13,6 +13,10 @@ pip install SQLAlchemy
 pip install psycopg2
 pip install w3lib
 pip install tldextract
+pip install w3lib
+pip install urllib3
+pip install requests
+pip install tldextract
 ```
 
 ## How to setup the database with Docker

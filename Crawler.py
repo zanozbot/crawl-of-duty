@@ -15,11 +15,11 @@ seed_list = [
     "podatki.gov.si",
     "e-prostor.gov.si",
     # Selected
-    "www.arso.gov.si",
-    "www.gu.gov.si",
-    "mop.gov.si",
-    "mju.gov.si",
-    "www.ess.gov.si"
+    # "www.arso.gov.si",
+    # "www.gu.gov.si",
+    # "mop.gov.si",
+    # "mju.gov.si",
+    # "www.ess.gov.si"
 ]
 
 class Crawler:
@@ -95,7 +95,7 @@ class Crawler:
         if site is None:
             rp, sitemap = robotsparse(domain)
             site = Site(domain=domain, robots_content=rp, sitemap_content=sitemap)
-            self.session.add(s)
+            self.session.add(site)
             self.session.flush()
 
         html_hash = hashlib.sha512(website["content"].encode('utf-8')).hexdigest()
@@ -162,7 +162,7 @@ class Crawler:
         if site is None:
             rp, sitemap = robotsparse(domain)
             site = Site(domain=domain, robots_content=rp, sitemap_content=sitemap)
-            self.session.add(s)
+            self.session.add(site)
             self.session.flush()
         
         page = self.session.query(Page).filter(Page.url == url).first()
