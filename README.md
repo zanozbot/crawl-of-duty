@@ -17,6 +17,7 @@ pip install w3lib
 pip install urllib3
 pip install requests
 pip install tldextract
+pip install html5lib
 ```
 
 ## How to setup the database with Docker

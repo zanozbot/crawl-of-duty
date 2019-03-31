@@ -51,7 +51,7 @@ class WrappedPool:
         rows = self.session.query(Frontier).all()
         self.params_list = [ (row.parent_url, row.url) for row in rows]
         self.session.query(Frontier).delete()
-        self.session.commit()
+        self.session.flush()
 
     # Save frontier
     def save_frontier(self):
@@ -61,7 +61,7 @@ class WrappedPool:
             ls.add(Frontier(url=urls[1], parent_url=urls[0]))
         self.session.query(Frontier).delete()
         self.session.add_all(list(ls))
-        self.session.commit()
+        self.session.flush()
 
     # Callback registration
     def register_callback(self, c_type, func):
@@ -90,7 +90,7 @@ class WrappedPool:
             self.rp_dict = dict()
             for site in sites:
                 rp = get_robotparser(site.robots_content)
-                rp_dict[get_domain(site.domain)] = rp
+                self.rp_dict[get_domain(site.domain)] = rp
         
         dmn = get_domain(rp_url)
         if dmn in self.rp_dict:

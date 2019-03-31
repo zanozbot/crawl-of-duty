@@ -6,6 +6,7 @@ from tools import *
 from HTTPDownloaderWrapper import *
 from tools import get_domain
 import hashlib
+from multiprocessing import freeze_support
 
 # List of seed urls
 seed_list = [
@@ -204,5 +205,7 @@ class Crawler:
             self.session.commit()
             self.session.flush()
 
+if __name__ == '__main__':
+    freeze_support()
+    Crawler()
 
-Crawler()
