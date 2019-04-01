@@ -207,4 +207,7 @@ class Crawler:
 
 if __name__ == '__main__':
     freeze_support()
+    start_time = datetime.now()
     Crawler()
+    time_elapsed = datetime.now() - start_time
+    print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
