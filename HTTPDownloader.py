@@ -92,6 +92,22 @@ def seleniumGetContents(url, robotsparser, driver):
     status_code = 204
 
     if robotsparser.can_fetch("*", url):
+        cd = rr = None
+        try:
+            rr = robotsparser.request_rate("*")
+        except:
+            pass
+        try:
+            cd = robotsparser.crawl_delay("*")
+        except:
+            pass
+        if rr is not None:
+            sleep(rr.seconds)
+        elif cd is not None:
+            sleep(cd)
+        else:
+            sleep(5)
+        
         try:
             driver.get(url)
         except TimeoutException as ex:
@@ -143,6 +159,22 @@ def seleniumGetContents(url, robotsparser, driver):
 def getBinaryFile(url, robotsparser):
     try:
         if robotsparser.can_fetch("*", url):
+            cd = rr = None
+            try:
+                rr = robotsparser.request_rate("*")
+            except:
+                pass
+            try:
+                cd = robotsparser.crawl_delay("*")
+            except:
+                pass
+            if rr is not None:
+                sleep(rr.seconds)
+            elif cd is not None:
+                sleep(cd)
+            else:
+                sleep(5)
+                
             response = requests.get(url, timeout=30)
             return response.text, response.headers, response.status_code
         else:
