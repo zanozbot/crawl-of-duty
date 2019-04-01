@@ -150,8 +150,8 @@ class Crawler:
                         return
                 mime_type = get_mime_type_from_header(image[1])
                 if mime_type in image_mimes:
-                    imageObjects.append(Image(page_id=page.id, filename='', content_type=mime_type, data=encoded_content, accessed_time=image[3]))
-
+                    imageObjects.append(Image(page_id=page.id, filename=image[4], content_type=mime_type, data=encoded_content, accessed_time=image[3]))
+            print("# images:",len(imageObjects))
             self.session.add_all(imageObjects)
             self.session.commit()
 
@@ -208,4 +208,3 @@ class Crawler:
 if __name__ == '__main__':
     freeze_support()
     Crawler()
-

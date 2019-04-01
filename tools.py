@@ -3,11 +3,10 @@ import re, sys
 from selenium.webdriver.chrome.options import Options
 import urllib.robotparser
 from urllib.parse import urlparse, unquote
-from urllib.request import urlopen
-from urllib.error import HTTPError, URLError
 from enum import Enum    
 import w3lib.url
 import requests
+from requests import RequestException
 from time import sleep
 
 # Drivers linux/windows/osx
@@ -115,15 +114,24 @@ def get_robots_data(url):
 
     # Read url data
     uo = ""
+
     try:
         if parsedUrl.scheme != '':
-            uo = urlopen(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt", timeout=10).read().decode("utf-8")
+            res = requests.get(parsedUrl.scheme + "://" + parsedUrl.netloc + "/robots.txt", timeout=(5,7) )
+            if res.text is not None:
+                uo = res.text
+            else:
+                uo = ""
         else:
-            uo = urlopen("http://" + parsedUrl.netloc + "/robots.txt", timeout=10).read().decode("utf-8")            
-    except (HTTPError, URLError) as e:
-        print(e)
-        print("robots.txt inaccessible for site:", url)
-        return ""
+            res = requests.get("http://" + parsedUrl.netloc + "/robots.txt", timeout=(5,7))
+            if res.text is not None:
+                uo = res.text
+            else:
+                uo = ""
+    except RequestException as e:
+        print("robots.txt inaccessible for site:",url)
+        uo = ""
+
     return uo
 
 # urllib implementation does only basic functionality
@@ -168,8 +176,12 @@ def robotsparse(url):
     # Get all location urls
     sitemap_contents = ""
     for sitemap in sitemaps:
-        sm = str(urlopen(sitemap).read())
-        sitemap_contents += sm
+        try:
+            res = requests.get(sitemap, timeout=(5,7) )
+            if res.text is not None:
+                sitemap_contents += res.text
+        except RequestException as e:
+            print(e)
     
     return unquote(str(rp)), sitemap_contents
 

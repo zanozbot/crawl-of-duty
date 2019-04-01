@@ -119,11 +119,11 @@ def seleniumGetContents(url, robotsparser, driver):
                     try:
                         text, headers, status_code = getBinaryFile(canonize_url(current_link,url), robotsparser)
                         if text is not None and headers is not None and status_code is not None:
-                            images.append((text, headers, status_code, datetime.now()))
+                            images.append((text, headers, status_code, datetime.now(), current_link, current_link[current_link.rfind("/")+1:]))
                     except:
                         pass
                 elif extracted_url == 'data':
-                    images.append([current_link, {"Content-Type" : current_link}, status_code, time_accessed])
+                    images.append([current_link, {"Content-Type" : current_link}, status_code, time_accessed, ""])
         # END OF BLOCK
         
         for link in htmlContent.find_all('a'):
@@ -145,6 +145,8 @@ def getBinaryFile(url, robotsparser):
         if robotsparser.can_fetch("*", url):
             response = requests.get(url, timeout=30)
             return response.text, response.headers, response.status_code
+        else:
+            return None, None, None
     except:
         return None, None, None
 
