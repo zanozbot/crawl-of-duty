@@ -47,13 +47,14 @@ def processSiteUrl(url, robotsparser, driver):
     
     if mime_type is not None and mime_type in document_mimes:
         # COMMENT THIS LINE ON SECOND RUN!
-        file_content, headers, status_code = getBinaryFile(url, robotsparser)
+        """file_content, headers, status_code = getBinaryFile(url, robotsparser)
         if headers is None:
             return {}
         # COMMENT THIS LINE ON SECOND RUN!
         return {"document": {"content": file_content, "page_type": "BINARY", "status_code": status_code, "data_type": ending_to_datatype(get_mime_type_from_header(headers)), "time_accessed": time}}
+        """
         # UNCOMMENT THIS LINE ON SECOND RUN!
-        # return {}
+        return {}
     elif mime_type is not None and ending_to_datatype(mime_type) == 'HTML':
         return seleniumGetContents(url, robotsparser, driver)
     else:
@@ -85,7 +86,7 @@ def seleniumGetContents(url, robotsparser, driver):
             pass
 
         # COMMENT THIS WHOLE BLOCK ON SECOND RUN!
-        for link in htmlContent.find_all('img'):
+        """for link in htmlContent.find_all('img'):
             current_link = link.get('src')
             if current_link:
                 extracted_url = tldextract.extract(current_link)
@@ -99,6 +100,7 @@ def seleniumGetContents(url, robotsparser, driver):
                         pass
                 elif extracted_url == 'data':
                     images.append([current_link, {"Content-Type" : current_link}, status_code, time_accessed, ""])
+        """
         # END OF BLOCK
         
         for link in htmlContent.find_all('a'):

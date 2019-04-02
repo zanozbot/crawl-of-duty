@@ -10,17 +10,20 @@ from multiprocessing import freeze_support
 
 # List of seed urls
 seed_list = [
+    # Selected
+    "www.arso.gov.si",
+    "www.gu.gov.si",
+    "mop.gov.si",
+    "mju.gov.si",
+    "www.ess.gov.si"
+]
+
+neg_seed_list = [
     # Compulsory
     "evem.gov.si",
     "e-uprava.gov.si",
     "podatki.gov.si",
-    "e-prostor.gov.si",
-    # Selected
-    # "www.arso.gov.si",
-    # "www.gu.gov.si",
-    # "mop.gov.si",
-    # "mju.gov.si",
-    # "www.ess.gov.si"
+    "www.e-prostor.gov.si",
 ]
 
 class Crawler:
@@ -45,7 +48,7 @@ class Crawler:
 
 
         # Create process pool
-        self.pool = create_pool(session=self.session, max_workers=8, max_size=16)
+        self.pool = create_pool(session=self.session, max_workers=8, max_size=16, filter_out=neg_seed_list)
         if self.pool is None:
             return
 

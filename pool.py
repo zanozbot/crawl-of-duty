@@ -16,12 +16,22 @@ LOCK = mp.Lock()
 manager = Manager()
 
 class P(Process):
-    def __init__(self, rp_dict, frontiers, frontier_timers, frontier_time_limits, processed):
+    def __init__(self, rp_dict, frontiers, frontier_timers, frontier_time_limits, processed, filt_domains, filt_out_domains):
         self.frontiers = frontiers
         self.frontier_timers = frontier_timers
         self.frontier_time_limits = frontier_time_limits
         self.rp_dict = rp_dict
         self.processed = processed
+        if not filt_domains:
+            self.filters = None
+        else:
+            self.filters = set(filt_domains)
+
+        if not filt_out_domains:
+            self.filters_out = None
+        else:
+            self.filters_out = set(filt_out_domains)
+
         super(P, self).__init__()
 
     def frontiers_empty(self):
@@ -33,8 +43,8 @@ class P(Process):
 
     def run(self):
         self.driver = webdriver.Chrome(executable_path=platform_driver, options=chrome_options)
-        self.driver.set_page_load_timeout(5)
-        self.driver.set_script_timeout(7)
+        self.driver.set_page_load_timeout(11)
+        self.driver.set_script_timeout(15)
         self.session = Session()
 
         while not self.frontiers_empty():
@@ -80,8 +90,13 @@ class P(Process):
                     res["add_to_frontier"] = [canonize_url(pr, prms[1]) for pr in res["add_to_frontier"]]
                     LOCK.acquire()
                     for prm in res["add_to_frontier"]:
+                        if self.filters is not None and get_domain(prm) not in self.filters:
+                            continue
+                        if self.filters_out is not None and get_domain(prm) in self.filters_out:
+                            continue
                         prm_not_in_db = self.session.query(Page).filter(Page.url == prm).first() is None
                         if prm not in self.processed and prm_not_in_db:
+                            
                             dmn = get_domain(prm)
                             if dmn not in self.frontiers:
                                 self.frontiers[dmn] = manager.list()
@@ -272,7 +287,7 @@ class P(Process):
 
 # Pool wrapper
 class WrappedPool:
-    def __init__(self, max_workers, max_size, session):
+    def __init__(self, max_workers, max_size, session, filters, filters_out):
         self.manager = Manager()
 
         # Number of active workers
@@ -286,6 +301,10 @@ class WrappedPool:
 
         # Parameter list
         self.params_list=[]
+
+        # Filter domains
+        self.filter_domains = [ get_domain(canonize_url(filt)) for filt in filters ]
+        self.filter_out_domains = [ get_domain(canonize_url(filt)) for filt in filters_out ]
 
         # Frontier
         self.frontiers = self.manager.dict()
@@ -422,7 +441,7 @@ class WrappedPool:
 
         workers = []
         for r in range(self.max_workers):
-            worker = P(self.rp_dict, self.frontiers, self.frontier_timers, self.frontier_time_limits, self.processed)
+            worker = P(self.rp_dict, self.frontiers, self.frontier_timers, self.frontier_time_limits, self.processed, self.filter_domains, self.filter_out_domains)
             workers.append(worker)
             worker.start()
         
@@ -432,5 +451,5 @@ class WrappedPool:
 
 
 
-def create_pool(max_workers=4, max_size=16, session=None):
-    return WrappedPool(max_workers, max(max_size, max_workers), Session() if session is None else session)
+def create_pool(max_workers=4, max_size=16, session=None, filter=[], filter_out=[]):
+    return WrappedPool(max_workers, max(max_size, max_workers), Session() if session is None else session, filter, filter_out)
