@@ -13,7 +13,7 @@ from time import sleep
 
 # return a dictionary with appropriate values
 # "add_to_frontier" should be an array of urls found on the website.
-# They do not need to be canonized, that is taken care of in processing.py
+# They do not need to be canonized, that is taken care of in pool.py
 # other keys are optional. For each key a callback can be specified that
 # gets called when returned. An example of that is in Crawler.py
 def processSiteUrl(url, robotsparser, driver):
@@ -29,30 +29,6 @@ def processSiteUrl(url, robotsparser, driver):
     # Follow redirects, get mimetype otherwise
     try:
         response = requests.head(url, timeout=10)
-        max_red = 10
-        while (response.status_code // 100)%10 == 3:
-            cd = rr = None
-            try:
-                rr = robotsparser.request_rate("*")
-            except:
-                pass
-            try:
-                cd = robotsparser.crawl_delay("*")
-            except:
-                pass
-            if rr is not None:
-                sleep(rr.seconds)
-            elif cd is not None:
-                sleep(cd)
-            else:
-                sleep(5)
-            # Probably just loops
-            if max_red <= 0:
-                return {}
-            max_red -= 1
-            url = response.headers["Location"]
-            url = canonize_url(url)
-            response = requests.head(url, timeout=10)
         mime_type = get_mime_type_from_header(response.headers)
     except:
         if url.endswith("pdf"):
@@ -67,7 +43,6 @@ def processSiteUrl(url, robotsparser, driver):
             mime_type=".docx"
         else:
             mime_type=".html"
-
     document_mimes = {'.doc','.docx','.ppt','.pptx','.pdf'}
     
     if mime_type is not None and mime_type in document_mimes:
@@ -92,22 +67,6 @@ def seleniumGetContents(url, robotsparser, driver):
     status_code = 204
 
     if robotsparser.can_fetch("*", url):
-        cd = rr = None
-        try:
-            rr = robotsparser.request_rate("*")
-        except:
-            pass
-        try:
-            cd = robotsparser.crawl_delay("*")
-        except:
-            pass
-        if rr is not None:
-            sleep(rr.seconds)
-        elif cd is not None:
-            sleep(cd)
-        else:
-            sleep(5)
-        
         try:
             driver.get(url)
         except TimeoutException as ex:
@@ -159,22 +118,6 @@ def seleniumGetContents(url, robotsparser, driver):
 def getBinaryFile(url, robotsparser):
     try:
         if robotsparser.can_fetch("*", url):
-            cd = rr = None
-            try:
-                rr = robotsparser.request_rate("*")
-            except:
-                pass
-            try:
-                cd = robotsparser.crawl_delay("*")
-            except:
-                pass
-            if rr is not None:
-                sleep(rr.seconds)
-            elif cd is not None:
-                sleep(cd)
-            else:
-                sleep(5)
-                
             response = requests.get(url, timeout=30)
             return response.text, response.headers, response.status_code
         else:
