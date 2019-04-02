@@ -39,3 +39,12 @@ Several programs can be used to navigate through the database. The instructions 
 * Under "Maintenance database" put `postgres`
 * Under "Port" put `5432`
 * Under "Username" and "Password" put `docker`
+
+## Import dumped database into container
+
+```
+docker exec -i CONTAINER_NAME mkdir /database_dump
+docker cp seedListCrawled.sql CONTAINER_NAME:/database_dump/seedListCrawled.sql
+docker exec -i CONTAINER_NAME pg_restore -d crawldb /database_dump/seedListCrawled.sql
+docker exec -i CONTAINER_NAME psql -U docker -d postgres -f database_dump/seedListCrawled.sql
+```
