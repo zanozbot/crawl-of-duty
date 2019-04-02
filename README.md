@@ -20,6 +20,14 @@ pip install tldextract
 pip install html5lib
 ```
 
+Dependencies needed for visualization to work.
+```
+pip install matplotlib
+pip install numpy
+pip install networkx
+pip install scipy
+```
+
 ## How to setup the database with Docker
 
 ```
@@ -40,11 +48,11 @@ Several programs can be used to navigate through the database. The instructions 
 * Under "Port" put `5432`
 * Under "Username" and "Password" put `docker`
 
-## Import dumped database into container
+## Import dumped  database into container
 
 ```
 docker exec -i CONTAINER_NAME mkdir /database_dump
 docker cp seedListCrawled.sql CONTAINER_NAME:/database_dump/seedListCrawled.sql
-docker exec -i CONTAINER_NAME pg_restore -d crawldb /database_dump/seedListCrawled.sql
+docker exec -i CONTAINER_NAME pg_restore -U docker -d postgres /database_dump/seedListCrawled.sql
 docker exec -i CONTAINER_NAME psql -U docker -d postgres -f database_dump/seedListCrawled.sql
 ```
