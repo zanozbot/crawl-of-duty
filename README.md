@@ -1,4 +1,7 @@
 # Crawl of Duty
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 The goal of this programming assignment is to build a standalone crawler that will crawl only .gov.si web sites.
 
 ## Installation instructions
